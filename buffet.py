@@ -42,10 +42,16 @@ buffett = (wilshire_q / gdp_q['GDP_Bil']) * 100.0  # percent of GDP
 # --- Derived normalization metrics ---
 window = args.window
 
+"""Enhancement metrics: rolling stats, z-score, percentile, trend residual, plus
+exponentially weighted statistics for smoother bands."""
 # Rolling statistics (require minimum window observations)
 roll_mean = buffett.rolling(window).mean()
 roll_std = buffett.rolling(window).std()
 z_score = (buffett - roll_mean) / roll_std
+
+# Exponentially weighted mean & std (adaptive smoothing)
+ewm_mean = buffett.ewm(span=window, min_periods=max(5, window//4), adjust=False).mean()
+ewm_std = buffett.ewm(span=window, min_periods=max(5, window//4), adjust=False).std()
 
 # Rolling percentile (rank of last value within rolling window)
 def _last_percentile(x):
@@ -77,6 +83,8 @@ df_plot = pd.DataFrame({
     'Buffett_pct_of_GDP': buffett,
     'RollingMean': roll_mean,
     'RollingStd': roll_std,
+    'EWMMean': ewm_mean,
+    'EWMStd': ewm_std,
     'ZScore': z_score,
     'Percentile': percentile,
     'Trend': trend_series,
@@ -86,35 +94,55 @@ df_plot_out = df_plot.copy()
 df_plot_core = df_plot[['Buffett_pct_of_GDP','RollingMean','Trend']]
 
 # Plot
-fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True,
-                         gridspec_kw={'height_ratios':[2.2,1,1]})
+fig, axes = plt.subplots(3, 1, figsize=(13, 13), sharex=True,
+                         gridspec_kw={'height_ratios':[2.4,1,1]})
 
 # Panel 1: Buffett Indicator with rolling mean & trend + bands
 ax = axes[0]
-ax.plot(df_plot_core.index, df_plot_core['Buffett_pct_of_GDP'], label='Buffett Indicator (%)', linewidth=1.8)
-ax.plot(df_plot_core.index, df_plot_core['RollingMean'], label=f'Rolling Mean ({window}q)', linewidth=1.2, linestyle='--')
-ax.plot(df_plot_core.index, df_plot_core['Trend'], label='Log-Linear Trend', linewidth=1.2, linestyle=':')
+ax.plot(df_plot_core.index, df_plot_core['Buffett_pct_of_GDP'], label='Buffett Indicator (%)', linewidth=1.6, color='tab:blue')
+ax.plot(df_plot_core.index, df_plot_core['RollingMean'], label=f'Rolling Mean ({window}q)', linewidth=1.1, linestyle='--', color='tab:green')
+ax.plot(df_plot_core.index, df_plot_core['Trend'], label='Log-Linear Trend', linewidth=1.1, linestyle=':', color='tab:purple')
+
+# Rolling bands (±1σ shaded) and additional sigma lines
 upper_band = (roll_mean + roll_std)
 lower_band = (roll_mean - roll_std)
-ax.fill_between(df_plot_core.index, lower_band, upper_band, color='gray', alpha=0.15, label='±1σ band')
+ax.fill_between(df_plot_core.index, lower_band, upper_band, color='gray', alpha=0.15, label='±1σ (Rolling)')
+
+# +1.5σ and +2σ lines
+ax.plot(df_plot_core.index, roll_mean + 1.5*roll_std, linestyle='--', linewidth=0.8, color='red', alpha=0.7, label='+1.5σ')
+ax.plot(df_plot_core.index, roll_mean + 2*roll_std, linestyle='-', linewidth=0.8, color='red', alpha=0.6, label='+2σ')
+ax.plot(df_plot_core.index, roll_mean - 1.5*roll_std, linestyle='--', linewidth=0.8, color='teal', alpha=0.7, label='-1.5σ')
+ax.plot(df_plot_core.index, roll_mean - 2*roll_std, linestyle='-', linewidth=0.8, color='teal', alpha=0.6, label='-2σ')
+
+# EWM bands (thin lines)
+ax.plot(df_plot_core.index, ewm_mean, linewidth=0.9, linestyle='-.', color='orange', label='EWM Mean')
+ax.plot(df_plot_core.index, ewm_mean + ewm_std, linewidth=0.6, linestyle='-.', color='orange', alpha=0.8, label='EWM ±1σ')
+ax.plot(df_plot_core.index, ewm_mean - ewm_std, linewidth=0.6, linestyle='-.', color='orange', alpha=0.8)
 ax.set_ylabel('% of GDP')
 ax.set_title('Buffett Indicator (Market Cap / GDP) with Rolling Mean, Trend and ±1σ Band')
 ax.grid(True, alpha=0.3)
 ax.legend(loc='upper left')
 
-# Panel 2: Z-Score
+# Panel 2: Z-Score with background highlighting
 ax2 = axes[1]
-ax2.plot(df_plot.index, df_plot['ZScore'], color='tab:purple', linewidth=1.2)
-ax2.axhline(0, color='black', linewidth=0.8)
-ax2.axhline(1, color='red', linewidth=0.8, linestyle='--')
-ax2.axhline(-1, color='green', linewidth=0.8, linestyle='--')
+ax2.plot(df_plot.index, df_plot['ZScore'], color='tab:purple', linewidth=1.1)
+ax2.axhline(0, color='black', linewidth=0.7)
+ax2.axhline(1, color='red', linewidth=0.7, linestyle='--')
+ax2.axhline(-1, color='green', linewidth=0.7, linestyle='--')
+ax2.axhline(2, color='red', linewidth=0.6, linestyle=':')
+ax2.axhline(-2, color='green', linewidth=0.6, linestyle=':')
 ax2.set_ylabel('Z-Score')
-ax2.set_title('Valuation Z-Score (vs Rolling Window)')
+ax2.set_title('Valuation Z-Score (Rolling)')
 ax2.grid(True, alpha=0.3)
+
+# Highlight zones where z-score outside ±1
+zs = df_plot['ZScore']
+ax2.fill_between(df_plot.index, zs, 1, where=zs>1, color='red', alpha=0.10, interpolate=True)
+ax2.fill_between(df_plot.index, zs, -1, where=zs<-1, color='green', alpha=0.10, interpolate=True)
 
 # Panel 3: Trend Residual & Percentile
 ax3 = axes[2]
-ax3.plot(df_plot.index, df_plot['TrendResidual'], color='tab:orange', linewidth=1.2, label='Trend Residual (Actual / Trend)')
+ax3.plot(df_plot.index, df_plot['TrendResidual'], color='tab:orange', linewidth=1.1, label='Trend Residual (Actual / Trend)')
 ax3.axhline(1.0, color='black', linewidth=0.8)
 ax3.axhline(1.15, color='red', linewidth=0.8, linestyle='--')
 ax3.axhline(0.90, color='green', linewidth=0.8, linestyle='--')
@@ -122,6 +150,17 @@ ax3.set_ylabel('Residual Ratio')
 ax3.set_title('Trend Residual (Above 1 = Above Trend)')
 ax3.grid(True, alpha=0.3)
 ax3.legend(loc='upper left')
+
+# Regime annotations when residual crosses thresholds
+resid = df_plot['TrendResidual']
+cross_up = resid[(resid.shift(1) <= 1.15) & (resid > 1.15)].index
+cross_down = resid[(resid.shift(1) >= 0.90) & (resid < 0.90)].index
+for dt in cross_up:
+    ax3.axvline(dt, color='red', alpha=0.2, linewidth=1)
+    ax3.text(dt, 1.16, '↑>1.15', color='red', fontsize=7, rotation=90, va='bottom', ha='center')
+for dt in cross_down:
+    ax3.axvline(dt, color='green', alpha=0.2, linewidth=1)
+    ax3.text(dt, 0.89, '↓<0.90', color='green', fontsize=7, rotation=90, va='top', ha='center')
 
 plt.tight_layout()
 plt.savefig('buffett_indicator_enhanced.png', dpi=150)
