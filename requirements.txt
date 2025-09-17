@@ -1,6 +1,24 @@
+# Economic Analysis Tracker Suite - Requirements
+# ==============================================
+# 
+# Required packages for Buffett Indicator, Shipping Tracker, and Yield Curve Tracker
+# Compatible with Python 3.8+
+#
+# Core data analysis and manipulation
 pandas>=2.0.0
-pandas-datareader>=0.10.0
-matplotlib>=3.7.0
 numpy>=1.24.0
+
+# Financial and economic data sources
+pandas-datareader>=0.10.0
 yfinance>=0.2.30
+
+# Visualization and plotting
+matplotlib>=3.7.0
+
+# System compatibility (fixes distutils import issues)
+setuptools>=50.0.0
+
+# Optional: For development and testing
+# pytest>=7.0.0
+# jupyter>=1.0.0
 
