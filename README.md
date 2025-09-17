@@ -193,11 +193,57 @@ python manufacturing_tracker.py --min-data-points 100
 - `manufacturing_data.csv` - Complete time series with derived metrics
 
 ---
-## 10. Disclaimer
+## 10. International Trade & Global Integration Tracker
+
+### Overview
+`international_trade_tracker.py` provides comprehensive analysis of US international trade health and global economic integration using official Federal Reserve and market data. This tracker monitors trade flows, currency dynamics, commodity markets, and international capital movements.
+
+### Data Sources (All from FRED and Market Data)
+- **Trade Balance (BOPGSTB)** - Net exports indicating trade competitiveness
+- **US Dollar Index (DTWEXBGS)** - Currency strength impact on trade
+- **Commodity Price Indices** - WTI Oil, Copper, Producer Price Index
+- **Foreign Investment Flows** - Treasury holdings and debt metrics
+- **Trade Volume Indicators** - Exports, imports, and trade flows
+
+### Key Features
+- **Trade Health Score** (0-100): Weighted composite indicator of trade conditions
+- **Multi-component Analysis**: Trade balance, currency, commodities, capital flows
+- **Trend Analysis**: 12-month rolling windows with volatility metrics
+- **Classification System**: Very Strong → Strong → Above Average → Average → Below Average → Weak → Very Weak
+- **Professional Visualizations**: 6-panel comprehensive charts with trade dynamics
+- **Data Export**: CSV format for further analysis
+
+### Usage
+```bash
+# Basic analysis (from 1990)
+python international_trade_tracker.py
+
+# Custom date range and analysis window
+python international_trade_tracker.py --start 2000-01-01 --window 12
+
+# Minimum data requirements
+python international_trade_tracker.py --min-data-points 100
+```
+
+### Interpretation Guide
+- **Very Strong (85+ percentile)**: Exceptional trade conditions with strong exports and competitive positioning
+- **Strong (70-85 percentile)**: Favorable trade environment with healthy export growth
+- **Above Average (55-70 percentile)**: Generally positive conditions above historical norms
+- **Average (45-55 percentile)**: Balanced trade conditions with mixed signals
+- **Below Average (30-45 percentile)**: Somewhat challenging environment with headwinds
+- **Weak (15-30 percentile)**: Difficult conditions with multiple stress indicators
+- **Very Weak (<15 percentile)**: Severely constrained trade environment
+
+### Output Files
+- `international_trade_analysis.png` - Comprehensive 6-panel visualization
+- `international_trade_analysis.csv` - Complete time series with derived metrics
+
+---
+## 11. Disclaimer
 This tool is for educational / research use only and does **not** constitute investment advice. Past relationships do not guarantee future outcomes.
 
 ---
-## 11. Quick Interpretation Flow
+## 12. Quick Interpretation Flow
 1. Look at core series vs RollingMean & band: inside or outside?
 2. Check ZScore: magnitude & persistence.
 3. Confirm with Percentile: truly tail or just modestly elevated?
