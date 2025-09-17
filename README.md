@@ -149,6 +149,50 @@ yfinance
 Extra libs in `requirements.txt` (requests, lxml, beautifulsoup4) were legacy (safe to remove if not scraping).
 
 ---
+## 9. Manufacturing Sector Health Tracker
+
+### Overview
+`manufacturing_tracker.py` provides comprehensive analysis of US manufacturing sector health using official Federal Reserve data. This tracker monitors real economic activity rather than survey-based indices.
+
+### Data Sources (All from FRED)
+- **Industrial Production: Manufacturing (IPMAN)** - Current manufacturing output
+- **Capacity Utilization: Manufacturing (MCUMFN)** - Manufacturing efficiency 
+- **Manufacturers' New Orders: Total Manufacturing (AMTMNO)** - Forward-looking demand
+- **Manufacturers' New Orders: Durable Goods (DGORDER)** - Core manufacturing demand
+- **Industrial Production: Durable/Nondurable** - Sector breakdown
+
+### Key Features
+- **Manufacturing Health Score** (0-100): Weighted composite indicator
+- **Multi-component Analysis**: Production, capacity, orders, efficiency
+- **Trend Analysis**: 3, 6, and 12-month trends with volatility metrics
+- **Classification System**: Very Strong → Strong → Stable → Weak → Contracting
+- **Professional Visualizations**: 6-panel comprehensive charts
+- **Data Export**: CSV format for further analysis
+
+### Usage
+```bash
+# Basic analysis (last 10 years)
+python manufacturing_tracker.py
+
+# Custom date range with exports
+python manufacturing_tracker.py --start 2015-01-01 --save-chart manufacturing.png --export-csv manufacturing.csv
+
+# Minimum data requirements
+python manufacturing_tracker.py --min-data-points 100
+```
+
+### Interpretation Guide
+- **Health Score 75+**: Very strong manufacturing expansion
+- **Health Score 60-75**: Strong manufacturing growth
+- **Health Score 40-60**: Stable/balanced conditions
+- **Health Score 25-40**: Manufacturing weakness
+- **Health Score <25**: Manufacturing contraction
+
+### Output Files
+- `manufacturing_analysis.png` - Comprehensive 6-panel visualization
+- `manufacturing_data.csv` - Complete time series with derived metrics
+
+---
 ## 10. Disclaimer
 This tool is for educational / research use only and does **not** constitute investment advice. Past relationships do not guarantee future outcomes.
 
