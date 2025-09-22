@@ -297,4 +297,49 @@ python consumer_health_tracker.py --min-data-points 50
 - `consumer_health_analysis.csv` – Time series with all indicators and composite metrics
 
 ---
+## 13. Corporate Earnings & Profitability Tracker
+
+### Overview
+The **Corporate Earnings & Profitability Tracker** monitors business sector health and corporate fundamentals that drive employment, capital expenditure, and market valuation. Corporate earnings and profitability are fundamental to business cycle analysis and economic sustainability.
+
+### Key Indicators Tracked
+- **Corporate Profits**: After-tax corporate profits, profit margins, and profit share of GDP
+- **Business Investment**: Gross private domestic investment, nonresidential fixed investment, and capital expenditure
+- **Corporate Financial Health**: Corporate cash flow, net worth, and commercial paper issuance
+- **Market Performance**: S&P 500, NASDAQ, and equity market valuation metrics
+- **Economic Environment**: Interest rates, unemployment, and inflation affecting corporate operations
+
+### Corporate Health Classifications
+- **Exceptional**: Outstanding earnings growth, margins, and cash flow indicating strong economic expansion
+- **Strong**: Robust corporate profitability and health positive for economic growth and employment
+- **Above Average**: Solid corporate performance with good earnings trends and healthy balance sheets
+- **Average**: Balanced corporate conditions, neither significant expansion nor contraction pressure
+- **Below Average**: Some corporate weakness emerging, monitor for potential economic slowdown
+- **Weak**: Corporate stress evident with declining margins and earnings, economic growth at risk
+- **Very Weak**: Severe corporate distress with poor profitability indicating high recession risk
+
+### Key Features
+- **Corporate Health Score** (Z-Score): Weighted composite indicator of business sector health
+- **Multi-component Analysis**: Earnings (35%), Investment (25%), Financial Health (20%), Market Performance (15%), Economic Environment (5%)
+- **Growth Rate Analysis**: Year-over-year changes for key profit and investment indicators
+- **Professional Visualizations**: 6-panel comprehensive charts with corporate dynamics
+- **Data Export**: CSV format for further analysis and integration
+
+### Usage
+```bash
+# Basic analysis (from 1990)
+python corporate_earnings_tracker.py
+
+# Custom date range and analysis window
+python corporate_earnings_tracker.py --start 2010-01-01 --window 12
+
+# Minimum data requirements
+python corporate_earnings_tracker.py --min-data-points 50
+```
+
+### Output Files
+- `corporate_earnings_analysis.png` – Multi-panel corporate health visualization
+- `corporate_earnings_analysis.csv` – Time series with all indicators and composite metrics
+
+---
 Feel free to request additional metrics, alternative trend modeling, or an HTML interactive dashboard.

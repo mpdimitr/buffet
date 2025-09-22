@@ -99,9 +99,9 @@ def get_consumer_confidence_data(start_date: str = '1990-01-01') -> Dict[str, pd
     confidence_series = {
         'CSCICP03USM665S': 'Consumer Confidence Index (OECD)',
         'UMCSENT': 'University of Michigan Consumer Sentiment',
-        'CECGAP03USM665S': 'Consumer Expectations Index',
-        'IRECPRUS': 'Consumer Sentiment - Present Situation',
-        'IRECEUS': 'Consumer Sentiment - Expected Conditions'
+        'USRECQ': 'US Recession Probability (Economic Stress)',
+        'USSLIND': 'US Leading Economic Index',
+        'PAYEMS': 'Total Nonfarm Employment (Consumer Job Security)'
     }
     
     print("   😊 Fetching Consumer Confidence data...")
@@ -130,10 +130,10 @@ def get_personal_consumption_data(start_date: str = '1990-01-01') -> Dict[str, p
     pce_series = {
         'PCE': 'Personal Consumption Expenditures',
         'PCEDG': 'PCE: Durable Goods',
-        'PCEND': 'PCE: Nondurable Goods', 
+        'PCEND': 'PCE: Nondurable Goods',
         'PCES': 'PCE: Services',
-        'DPCERG3M086SBEA': 'Real PCE (3-Month Change)',
-        'PCEGDP': 'PCE as % of GDP'
+        'RSAFS': 'Retail Sales (Consumer Spending Proxy)',
+        'MEHOINUSA672N': 'Real Median Household Income'
     }
     
     print("   💰 Fetching Personal Consumption data...")
@@ -161,9 +161,9 @@ def get_consumer_credit_data(start_date: str = '1990-01-01') -> Dict[str, pd.Ser
     
     credit_series = {
         'TOTALSL': 'Total Consumer Credit Outstanding',
-        'REVOLSL': 'Revolving Consumer Credit (Credit Cards)',
+        'REVOLSL': 'Revolving Consumer Credit (Credit Cards)', 
         'NONREVSL': 'Non-Revolving Consumer Credit (Auto, Student)',
-        'DTCOLCL': 'Household Debt Service Payments as % of Disposable Income',
+        'CCLACBW027SBOG': 'Consumer Credit Loans Outstanding (Alternative)',
         'FODSP': 'Financial Obligations as % of Disposable Income'
     }
     
@@ -224,9 +224,9 @@ def get_energy_cost_indicators(start_date: str = '1990-01-01') -> Dict[str, pd.S
     energy_series = {
         'GASREGW': 'US Regular All Formulations Gas Price',
         'DCOILWTICO': 'Crude Oil Prices: West Texas Intermediate',
-        'CUURA000SEHE': 'Consumer Price Index: Energy (Urban)',
         'CUURA000SA0E': 'CPI: Energy Commodities',
-        'NATURALGAS': 'Natural Gas Prices'
+        'NATURALGAS': 'Natural Gas Prices',
+        'CPIENGSL': 'Consumer Price Index: Energy'
     }
     
     print("   ⛽ Fetching Energy Cost data...")
@@ -298,18 +298,18 @@ def normalize_consumer_indicators(data_dict: Dict[str, pd.Series], window: int =
     # Indicators where HIGHER values mean BETTER consumer health
     positive_indicators = [
         'RSAFS', 'RSCCAS', 'RSFHFS',  # Retail sales (growth is good)
-        'CSCICP03USM665S', 'UMCSENT', 'CECGAP03USM665S',  # Consumer confidence
+        'CSCICP03USM665S', 'UMCSENT', 'USSLIND', 'PAYEMS',  # Consumer confidence and employment
         'PCE', 'PCEDG', 'PCEND', 'PCES',  # Personal consumption
         'PI', 'DPIC96', 'MEHOINUSA672N', 'WASCUR',  # Income measures
-        'TOTALSL', 'NONREVSL'  # Some credit growth is healthy
+        'TOTALSL', 'NONREVSL', 'CCLACBW027SBOG'  # Some credit growth is healthy
     ]
     
     # Indicators where LOWER values mean BETTER consumer health  
     negative_indicators = [
         'RSGASS',  # Gas station sales (high = high gas prices)
-        'DTCOLCL', 'FODSP',  # Debt service burden
-        'GASREGW', 'DCOILWTICO', 'CUURA000SEHE', 'CUURA000SA0E',  # Energy costs
-        'REVOLSL'  # Excessive credit card debt
+        'FODSP',  # Financial obligations burden
+        'GASREGW', 'DCOILWTICO', 'CUURA000SA0E', 'CPIENGSL',  # Energy costs
+        'REVOLSL', 'USRECQ'  # Excessive credit card debt and recession risk
     ]
     
     # Indicators where MODERATE values are best (inverted U-shape)
@@ -387,16 +387,16 @@ def create_consumer_health_composite(data_dict: Dict[str, pd.Series], window: in
         print("❌ ERROR: Insufficient data for composite calculation")
         return pd.Series(), pd.DataFrame()
     
-    # Weight different categories of indicators
+        # Weight different categories of indicators
     category_weights = {
-        # Spending indicators (40% weight)
-        'spending': ['RSAFS', 'PCE', 'PCEDG', 'PCEND', 'PCES'],
-        # Confidence indicators (25% weight)  
-        'confidence': ['CSCICP03USM665S', 'UMCSENT', 'CECGAP03USM665S'],
+        # Consumer spending indicators (40% weight) 
+        'spending': ['RSAFS', 'RSGASS', 'RSCCAS', 'RSFHFS', 'RSAFSNA', 'PCE', 'PCEDG', 'PCEND', 'PCES'],
+        # Consumer confidence indicators (25% weight)
+        'confidence': ['CSCICP03USM665S', 'UMCSENT', 'USRECQ', 'USSLIND', 'PAYEMS'],
         # Financial health indicators (20% weight)
-        'financial': ['PSAVERT', 'DTCOLCL', 'FODSP', 'TOTALSL', 'REVOLSL'],
-        # Income/purchasing power indicators (15% weight)
-        'income': ['PI', 'DPIC96', 'WASCUR', 'GASREGW', 'CUURA000SEHE']
+        'financial': ['TOTALSL', 'REVOLSL', 'NONREVSL', 'CCLACBW027SBOG', 'FODSP'],
+        # Income & purchasing power (15% weight)
+        'income': ['PSAVERT', 'PI', 'DPIC96', 'MEHOINUSA672N', 'WASCUR', 'GASREGW', 'DCOILWTICO', 'CUURA000SA0E', 'NATURALGAS', 'CPIENGSL']
     }
     
     weights = {'spending': 0.40, 'confidence': 0.25, 'financial': 0.20, 'income': 0.15}
@@ -423,7 +423,17 @@ def create_consumer_health_composite(data_dict: Dict[str, pd.Series], window: in
         return pd.Series(), pd.DataFrame()
     
     # Combine weighted components
-    composite_score = sum(weighted_components) / total_weight if total_weight > 0 else sum(weighted_components)
+    if weighted_components:
+        composite_score = sum(weighted_components) / total_weight if total_weight > 0 else sum(weighted_components)
+        # Ensure we have valid data
+        composite_score = composite_score.dropna()
+    else:
+        print("❌ ERROR: No weighted components available")
+        return pd.Series(), pd.DataFrame()
+    
+    if composite_score.empty:
+        print("❌ ERROR: Composite score is empty after calculation")
+        return pd.Series(), pd.DataFrame()
     
     print(f"✅ Consumer health composite created with {len(combined_df.columns)} indicators")
     print(f"   📊 Data range: {composite_score.index[0].strftime('%Y-%m')} to {composite_score.index[-1].strftime('%Y-%m')}")
@@ -658,6 +668,10 @@ def main():
         return
     
     # Calculate current consumer health metrics
+    if composite_index.empty or pd.isna(composite_index.iloc[-1]):
+        print("❌ ERROR: Invalid composite index for current analysis")
+        return
+        
     latest_date = composite_index.index[-1]
     latest_score = composite_index.iloc[-1]
     percentile = (composite_index.rank(pct=True).iloc[-1]) * 100
