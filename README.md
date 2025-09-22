@@ -205,4 +205,50 @@ This tool is for educational / research use only and does **not** constitute inv
 5. Synthesize with macro context before acting.
 
 ---
+## 12. Consumer Health Tracker
+
+### Overview
+The **Consumer Health Tracker** provides comprehensive monitoring of the consumer sector, which represents ~70% of US GDP and is critical for economic growth and recession prediction.
+
+### Key Indicators Tracked
+- **Retail Sales**: Month-over-month and year-over-year growth across categories
+- **Consumer Confidence**: OECD and University of Michigan sentiment indicators  
+- **Personal Consumption Expenditures (PCE)**: Real consumer spending (durable goods, non-durable goods, services)
+- **Consumer Credit**: Household borrowing trends and credit growth
+- **Personal Savings Rate**: Consumer financial health and spending capacity
+- **Energy Costs**: Gas prices and energy commodities affecting purchasing power
+
+### Consumer Health Classifications
+- **Very Strong**: Robust spending, high confidence, healthy credit growth
+- **Strong**: Above-average consumer activity and sentiment
+- **Above Average**: Moderate consumer strength with positive trends
+- **Average**: Balanced consumer conditions, neither strong nor weak
+- **Below Average**: Some consumer weakness emerging
+- **Weak**: Declining consumer activity and confidence
+- **Very Weak**: Severe consumer retrenchment, recession risk
+
+### Key Features
+- **Consumer Health Score** (Z-Score): Weighted composite indicator of consumer conditions
+- **Multi-component Analysis**: Spending (40%), Confidence (25%), Financial Health (20%), Income/Purchasing Power (15%)
+- **Trend Analysis**: Rolling windows with volatility metrics and growth rates
+- **Professional Visualizations**: 6-panel comprehensive charts with consumer dynamics
+- **Data Export**: CSV format for further analysis
+
+### Usage
+```bash
+# Basic analysis (from 1990)
+python consumer_health_tracker.py
+
+# Custom date range and analysis window
+python consumer_health_tracker.py --start 2000-01-01 --window 12
+
+# Minimum data requirements
+python consumer_health_tracker.py --min-data-points 50
+```
+
+### Output Files
+- `consumer_health_analysis.png` – Multi-panel consumer sector visualization
+- `consumer_health_analysis.csv` – Time series with all indicators and composite metrics
+
+---
 Feel free to request additional metrics, alternative trend modeling, or an HTML interactive dashboard.
