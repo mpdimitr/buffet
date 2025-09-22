@@ -88,7 +88,7 @@ def main():
     # Define trackers to test
     trackers = [
         ("buffet.py", "Market Valuation (Buffett Indicator)", ["--start", "2020-01-01"]),
-        ("shipping_tracker_complete.py", "Shipping Activity Tracker", ["--start", "2020-01-01", "--min-data-points", "30"]),
+        ("shipping_tracker_complete.py", "Shipping Activity Tracker", ["--start", "2020-01-01", "--min-components", "1"]),
         ("yield_curve_tracker.py", "Yield Curve & Recession Risk", ["--start", "2020-01-01", "--min-data-points", "30"]),
         ("labor_market_tracker.py", "Labor Market Health", ["--start", "2020-01-01", "--min-data-points", "30"]),
         ("credit_conditions_tracker.py", "Credit Conditions Monitor", ["--start", "2020-01-01", "--min-data-points", "30"]),
