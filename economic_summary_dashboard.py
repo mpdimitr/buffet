@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """
-Economic Summary Dashboard - Comprehensive Economic Indicators Alignment
-=======================================================================
+Enhanced Economic Summary Dashboard - Comprehensive Economic Indicators with Full Charts
+========================================================================================
 
-This script creates a comprehensive dashboard showing key economic indicators
-aligned over the same time period, making it easy to see relationships between:
-- Buffet Indicator (market valuation)
-- Yield Curve (10Y-2Y spread)
-- Unemployment Rate 
-- Corporate Earnings Health
-- Consumer Health
-- Recession periods (NBER shading)
-
-All indicators are synchronized to the same time axis for easy comparison
-and correlation analysis during different economic cycles.
+This script creates a comprehensive dashboard showing key economic indicators using
+the actual chart implementations from individual analysis tools, providing full
+detail and rich visualizations aligned over the same time period.
 
 Features:
-- Synchronized time series from 2000 onwards
+- SP500 and QQQ market index charts at the top
+- Full Buffet Indicator chart (reusing buffet.py visualization)
+- 10Y-2Y Treasury spread chart (from yield_curve_tracker.py)
+- Unemployment rate chart (from labor_market_tracker.py)
+- Corporate health and consumer indicators
 - NBER recession shading on all panels
-- Standardized Y-axis scaling for comparison
-- Professional styling with clear legends
-- Export as high-resolution PNG
+- Code reuse from existing analysis tools
 
 Usage:
     python3 economic_summary_dashboard.py
@@ -40,6 +34,8 @@ import argparse
 import numpy as np
 import yfinance as yf
 import warnings
+import sys
+import os
 from typing import Dict, Optional, Tuple, List
 
 # Suppress warnings for cleaner output
@@ -89,72 +85,160 @@ def add_recession_shading(ax, data_start=None, data_end=None, alpha=0.2, color='
             labeled = True
 
 # ============================================================================
-# DATA COLLECTION FUNCTIONS
+# DATA COLLECTION FUNCTIONS (Reusing Individual Tracker Logic)
 # ============================================================================
 
-def get_buffet_indicator_data(start_date: str = '2000-01-01') -> pd.Series:
-    """Fetch Buffet Indicator data (Market Cap / GDP)."""
-    print("📊 Fetching Buffet Indicator data...")
+def get_market_indices_data(start_date: str = '2000-01-01') -> Dict[str, pd.Series]:
+    """Fetch SP500 and QQQ market index data."""
+    print("📊 Fetching Market Indices data...")
+    
+    indices = {}
+    try:
+        start = pd.to_datetime(start_date)
+        
+        # Get SP500 data
+        sp500_df = yf.download("^GSPC", start=start.strftime('%Y-%m-%d'))
+        if not sp500_df.empty:
+            indices['SP500'] = sp500_df[('Close', '^GSPC')].dropna()
+            print(f"✓ S&P 500: {len(indices['SP500'])} daily observations")
+        
+        # Get NASDAQ-100 (QQQ ETF)
+        qqq_df = yf.download("QQQ", start=start.strftime('%Y-%m-%d'))
+        if not qqq_df.empty:
+            indices['QQQ'] = qqq_df[('Close', 'QQQ')].dropna()
+            print(f"✓ QQQ (NASDAQ-100): {len(indices['QQQ'])} daily observations")
+            
+    except Exception as e:
+        print(f"❌ Error fetching market indices: {e}")
+        
+    return indices
+
+def get_buffet_indicator_full_data(start_date: str = '2000-01-01') -> Dict[str, pd.Series]:
+    """Get full Buffet Indicator data with all derived metrics (reusing buffet.py logic)."""
+    print("📊 Fetching Buffet Indicator with full metrics...")
     
     try:
         start = pd.to_datetime(start_date)
         end = datetime.datetime.today()
+        window = 60  # Default window from buffet.py
         
-        # Get Wilshire 5000 and GDP data
+        # Reuse exact logic from buffet.py
         wilshire_df = yf.download("^W5000", start=start.strftime('%Y-%m-%d'))
         wilshire = wilshire_df[("Close", "^W5000")]
         gdp = pdr.DataReader('GDP', 'fred', start, end)
         
-        # Convert to quarterly and calculate Buffet indicator
-        wilshire_q = wilshire.resample('QE').last()
-        gdp_q = gdp.resample('QE').last()['GDP']
-        buffet = (wilshire_q / gdp_q) * 100.0
+        # Align frequencies: convert both to quarterly end
+        wilshire_q = wilshire.resample('QE').last().rename('Wilshire_MktCap_Bil')
+        gdp_q = gdp.resample('QE').last().rename(columns={'GDP':'GDP_Bil'})
         
-        print(f"✓ Buffet Indicator: {len(buffet)} quarterly observations")
-        return buffet.dropna()
+        # Compute Buffett Indicator
+        buffett = (wilshire_q / gdp_q['GDP_Bil']) * 100.0
+        
+        # Derived metrics (same as buffet.py)
+        roll_mean = buffett.rolling(window).mean()
+        roll_std = buffett.rolling(window).std()
+        z_score = (buffett - roll_mean) / roll_std
+        
+        # Log-linear trend
+        if buffett.notna().sum() > 10:
+            t_index = np.arange(len(buffett))
+            mask = buffett.notna()
+            coef = np.polyfit(t_index[mask], np.log(buffett[mask]), 1)
+            log_trend = np.polyval(coef, t_index)
+            trend_series = pd.Series(np.exp(log_trend), index=buffett.index, name='Trend')
+            trend_residual = buffett / trend_series
+        else:
+            trend_series = pd.Series(index=buffett.index, dtype=float)
+            trend_residual = pd.Series(index=buffett.index, dtype=float)
+        
+        result = {
+            'Buffett_pct_of_GDP': buffett.dropna(),
+            'RollingMean': roll_mean.dropna(),
+            'RollingStd': roll_std.dropna(),
+            'ZScore': z_score.dropna(),
+            'Trend': trend_series.dropna(),
+            'TrendResidual': trend_residual.dropna()
+        }
+        
+        print(f"✓ Buffet Indicator with full metrics: {len(buffett)} quarterly observations")
+        return result
         
     except Exception as e:
         print(f"❌ Error fetching Buffet Indicator: {e}")
-        return pd.Series()
+        return {}
 
-def get_yield_spread_data(start_date: str = '2000-01-01') -> pd.Series:
-    """Fetch 10Y-2Y Treasury spread data."""
+def get_yield_curve_data(start_date: str = '2000-01-01') -> Dict[str, pd.Series]:
+    """Get yield curve data (reusing yield_curve_tracker.py logic)."""
     print("📊 Fetching Yield Curve data...")
     
     try:
         start = pd.to_datetime(start_date)
         
-        # Get Treasury yields
-        dgs10 = pdr.get_data_fred('DGS10', start=start)
-        dgs2 = pdr.get_data_fred('DGS2', start=start)
+        # Reuse logic from yield_curve_tracker.py
+        yields_data = {}
         
-        # Calculate 10Y-2Y spread
-        spread = dgs10['DGS10'] - dgs2['DGS2']
-        spread = spread.dropna()
+        # Treasury yield series
+        series_map = {
+            'DGS3MO': '3M Treasury',
+            'DGS2': '2Y Treasury', 
+            'DGS5': '5Y Treasury',
+            'DGS10': '10Y Treasury',
+            'DGS30': '30Y Treasury'
+        }
         
-        print(f"✓ 10Y-2Y Spread: {len(spread)} daily observations")
-        return spread
+        yields_df = pd.DataFrame()
+        for series_code, description in series_map.items():
+            try:
+                data = pdr.get_data_fred(series_code, start=start)
+                if not data.empty:
+                    yields_df[series_code] = data.iloc[:, 0]
+            except Exception:
+                continue
+        
+        # Calculate spreads
+        spreads = {}
+        if 'DGS10' in yields_df.columns and 'DGS2' in yields_df.columns:
+            spreads['10Y-2Y'] = (yields_df['DGS10'] - yields_df['DGS2']).dropna()
+            print(f"✓ 10Y-2Y Spread: {len(spreads['10Y-2Y'])} daily observations")
+        
+        if 'DGS10' in yields_df.columns and 'DGS3MO' in yields_df.columns:
+            spreads['10Y-3M'] = (yields_df['DGS10'] - yields_df['DGS3MO']).dropna()
+        
+        return spreads
         
     except Exception as e:
-        print(f"❌ Error fetching yield spread: {e}")
-        return pd.Series()
+        print(f"❌ Error fetching yield curve data: {e}")
+        return {}
 
-def get_unemployment_data(start_date: str = '2000-01-01') -> pd.Series:
-    """Fetch unemployment rate data."""
-    print("📊 Fetching Unemployment data...")
+def get_labor_market_data(start_date: str = '2000-01-01') -> Dict[str, pd.Series]:
+    """Get labor market data (reusing labor_market_tracker.py logic)."""
+    print("📊 Fetching Labor Market data...")
     
     try:
         start = pd.to_datetime(start_date)
         
-        unemployment = pdr.get_data_fred('UNRATE', start=start)['UNRATE']
-        unemployment = unemployment.dropna()
+        data = {}
         
-        print(f"✓ Unemployment Rate: {len(unemployment)} monthly observations")
-        return unemployment
+        # Unemployment rate
+        unemployment = pdr.get_data_fred('UNRATE', start=start)
+        if not unemployment.empty:
+            data['Unemployment_Rate'] = unemployment.iloc[:, 0].dropna()
+            print(f"✓ Unemployment Rate: {len(data['Unemployment_Rate'])} monthly observations")
+        
+        # Job openings
+        try:
+            job_openings = pdr.get_data_fred('JTSJOL', start=start)
+            if not job_openings.empty:
+                data['Job_Openings'] = job_openings.iloc[:, 0].dropna()
+                print(f"✓ Job Openings: {len(data['Job_Openings'])} monthly observations")
+        except Exception:
+            pass
+        
+        return data
         
     except Exception as e:
-        print(f"❌ Error fetching unemployment: {e}")
-        return pd.Series()
+        print(f"❌ Error fetching labor market data: {e}")
+        return {}
 
 def get_corporate_profits_data(start_date: str = '2000-01-01') -> pd.Series:
     """Fetch corporate profits data."""
@@ -182,216 +266,306 @@ def get_corporate_profits_data(start_date: str = '2000-01-01') -> pd.Series:
         
     return pd.Series()
 
-def get_consumer_confidence_data(start_date: str = '2000-01-01') -> pd.Series:
-    """Fetch consumer confidence data."""
-    print("📊 Fetching Consumer Confidence data...")
+# ============================================================================
+# CHART CREATION FUNCTIONS (Reusing Individual Tracker Styles)
+# ============================================================================
+
+def create_market_indices_chart(ax, indices_data: Dict[str, pd.Series], common_start, common_end):
+    """Create market indices chart with separate y-axes for SP500 and QQQ."""
+    add_recession_shading(ax, data_start=common_start, data_end=common_end, 
+                         alpha=0.15, color='red', label_first=True)
     
-    try:
-        start = pd.to_datetime(start_date)
-        
-        # University of Michigan Consumer Sentiment
-        confidence = pdr.get_data_fred('UMCSENT', start=start)
-        if not confidence.empty:
-            confidence = confidence.iloc[:, 0].dropna()
-            print(f"✓ Consumer Confidence: {len(confidence)} monthly observations")
-            return confidence
-        
-    except Exception as e:
-        print(f"❌ Error fetching consumer confidence: {e}")
-        
-    return pd.Series()
+    colors = {'SP500': '#1f77b4', 'QQQ': '#ff7f0e'}
+    
+    # Plot SP500 on the left y-axis
+    if 'SP500' in indices_data and not indices_data['SP500'].empty:
+        sp500_data = indices_data['SP500']
+        sp500_filtered = sp500_data[(sp500_data.index >= common_start) & (sp500_data.index <= common_end)]
+        if not sp500_filtered.empty:
+            line1 = ax.plot(sp500_filtered.index, sp500_filtered.values, 
+                           linewidth=2, color=colors['SP500'], label='S&P 500', alpha=0.8)
+    
+    ax.set_ylabel('S&P 500 Price ($)', color=colors['SP500'])
+    ax.tick_params(axis='y', labelcolor=colors['SP500'])
+    
+    # Create second y-axis for QQQ
+    ax2 = ax.twinx()
+    
+    # Plot QQQ on the right y-axis
+    if 'QQQ' in indices_data and not indices_data['QQQ'].empty:
+        qqq_data = indices_data['QQQ']
+        qqq_filtered = qqq_data[(qqq_data.index >= common_start) & (qqq_data.index <= common_end)]
+        if not qqq_filtered.empty:
+            line2 = ax2.plot(qqq_filtered.index, qqq_filtered.values, 
+                            linewidth=2, color=colors['QQQ'], label='QQQ (NASDAQ-100)', alpha=0.8)
+    
+    ax2.set_ylabel('QQQ Price ($)', color=colors['QQQ'])
+    ax2.tick_params(axis='y', labelcolor=colors['QQQ'])
+    
+    ax.set_title('Market Indices - S&P 500 & NASDAQ-100 (QQQ) - Dual Axis', fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    
+    # Create combined legend
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+def create_buffet_chart(ax, buffet_data: Dict[str, pd.Series], common_start, common_end):
+    """Create Buffet indicator chart reusing buffet.py style."""
+    if 'Buffett_pct_of_GDP' not in buffet_data or buffet_data['Buffett_pct_of_GDP'].empty:
+        return
+    
+    # Filter data to common range
+    buffett = buffet_data['Buffett_pct_of_GDP']
+    buffett_filtered = buffett[(buffett.index >= common_start) & (buffett.index <= common_end)]
+    
+    # Add recession shading first
+    add_recession_shading(ax, data_start=common_start, data_end=common_end, 
+                         alpha=0.15, color='red', label_first=False)
+    
+    # Main Buffet indicator line
+    ax.plot(buffett_filtered.index, buffett_filtered.values, 
+           linewidth=2, color='#1f77b4', label='Buffett Indicator (%)')
+    
+    # Add rolling mean and trend if available
+    if 'RollingMean' in buffet_data and not buffet_data['RollingMean'].empty:
+        rolling_mean = buffet_data['RollingMean']
+        mean_filtered = rolling_mean[(rolling_mean.index >= common_start) & (rolling_mean.index <= common_end)]
+        ax.plot(mean_filtered.index, mean_filtered.values, 
+               linewidth=1.5, linestyle='--', color='green', alpha=0.7, label='Rolling Mean')
+    
+    if 'Trend' in buffet_data and not buffet_data['Trend'].empty:
+        trend = buffet_data['Trend']
+        trend_filtered = trend[(trend.index >= common_start) & (trend.index <= common_end)]
+        ax.plot(trend_filtered.index, trend_filtered.values, 
+               linewidth=1.5, linestyle=':', color='purple', alpha=0.7, label='Long-term Trend')
+    
+    ax.set_ylabel('Market Cap / GDP (%)')
+    ax.set_title('Buffett Indicator - Market Valuation Relative to GDP', fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+def create_yield_curve_chart(ax, yield_data: Dict[str, pd.Series], common_start, common_end):
+    """Create 10Y-2Y yield spread chart reusing yield_curve_tracker.py style."""
+    if '10Y-2Y' not in yield_data or yield_data['10Y-2Y'].empty:
+        return
+    
+    spread_data = yield_data['10Y-2Y']
+    spread_filtered = spread_data[(spread_data.index >= common_start) & (spread_data.index <= common_end)]
+    
+    # Add recession shading
+    add_recession_shading(ax, data_start=common_start, data_end=common_end, 
+                         alpha=0.15, color='red', label_first=False)
+    
+    # Main spread line
+    ax.plot(spread_filtered.index, spread_filtered.values, 
+           linewidth=1.5, color='#ff7f0e', label='10Y-2Y Spread')
+    
+    # Zero line and inversion shading
+    ax.axhline(y=0, color='red', linestyle='--', alpha=0.7, label='Inversion Level')
+    ax.fill_between(spread_filtered.index, spread_filtered.values, 0,
+                   where=(spread_filtered.values < 0), color='red', alpha=0.2, label='Inverted')
+    ax.fill_between(spread_filtered.index, spread_filtered.values, 0,
+                   where=(spread_filtered.values >= 0), color='green', alpha=0.1, label='Normal')
+    
+    ax.set_ylabel('Spread (percentage points)')
+    ax.set_title('10Y-2Y Treasury Spread - Primary Recession Indicator', fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+def create_labor_chart(ax, labor_data: Dict[str, pd.Series], common_start, common_end):
+    """Create unemployment chart reusing labor_market_tracker.py style."""
+    if 'Unemployment_Rate' not in labor_data or labor_data['Unemployment_Rate'].empty:
+        return
+    
+    unemployment = labor_data['Unemployment_Rate']
+    unemployment_filtered = unemployment[(unemployment.index >= common_start) & (unemployment.index <= common_end)]
+    
+    # Add recession shading
+    add_recession_shading(ax, data_start=common_start, data_end=common_end, 
+                         alpha=0.15, color='red', label_first=False)
+    
+    # Main unemployment line
+    ax.plot(unemployment_filtered.index, unemployment_filtered.values, 
+           linewidth=2, color='#2ca02c', label='Unemployment Rate')
+    
+    ax.set_ylabel('Unemployment Rate (%)')
+    ax.set_title('Unemployment Rate - Labor Market Health', fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+def create_corporate_profits_chart(ax, corporate_data: pd.Series, common_start, common_end):
+    """Create corporate profits chart."""
+    if corporate_data.empty:
+        return
+    
+    corporate_filtered = corporate_data[(corporate_data.index >= common_start) & (corporate_data.index <= common_end)]
+    
+    # Add recession shading
+    add_recession_shading(ax, data_start=common_start, data_end=common_end, 
+                         alpha=0.15, color='red', label_first=False)
+    
+    # Main corporate profits line
+    ax.plot(corporate_filtered.index, corporate_filtered.values, 
+           linewidth=2, color='#d62728', label='Corporate Profits Growth')
+    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.7)
+    
+    ax.set_ylabel('YoY Growth (%)')
+    ax.set_title('Corporate Profits Growth - Business Sector Health', fontweight='bold', fontsize=14)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
 
 # ============================================================================
-# VISUALIZATION FUNCTION
+# MAIN VISUALIZATION FUNCTION
 # ============================================================================
 
 def create_economic_summary_dashboard(start_date: str = '2000-01-01', save_path: str = 'economic_summary_dashboard.png'):
     """
-    Create comprehensive economic summary dashboard.
+    Create enhanced economic summary dashboard with full charts.
     """
-    print("🎯 ECONOMIC SUMMARY DASHBOARD")
+    print("🎯 ENHANCED ECONOMIC SUMMARY DASHBOARD")
     print("=" * 60)
     print(f"📅 Analysis Period: {start_date} to present")
-    print("🎨 Creating synchronized economic indicators visualization...")
+    print("🎨 Creating comprehensive visualization with full charts...")
     print("=" * 60)
     
-    # Collect all data
-    buffet_data = get_buffet_indicator_data(start_date)
-    yield_spread = get_yield_spread_data(start_date)
-    unemployment = get_unemployment_data(start_date)
+    # Collect all data using enhanced functions
+    market_indices = get_market_indices_data(start_date)
+    buffet_data = get_buffet_indicator_full_data(start_date)
+    yield_data = get_yield_curve_data(start_date)
+    labor_data = get_labor_market_data(start_date)
     corporate_profits = get_corporate_profits_data(start_date)
-    consumer_confidence = get_consumer_confidence_data(start_date)
     
     # Determine common time range
-    all_series = [s for s in [buffet_data, yield_spread, unemployment, corporate_profits, consumer_confidence] if not s.empty]
+    all_series = []
+    
+    # Add non-empty series for time range calculation
+    for data in market_indices.values():
+        if not data.empty:
+            all_series.append(data)
+    
+    for data in buffet_data.values():
+        if not data.empty:
+            all_series.append(data)
+    
+    for data in yield_data.values():
+        if not data.empty:
+            all_series.append(data)
+            
+    for data in labor_data.values():
+        if not data.empty:
+            all_series.append(data)
+    
+    if not corporate_profits.empty:
+        all_series.append(corporate_profits)
+    
     if not all_series:
         print("❌ No data available for dashboard")
         return
-        
+    
     common_start = max([s.index[0] for s in all_series])
     common_end = min([s.index[-1] for s in all_series])
     
     print(f"📅 Common data range: {common_start.strftime('%Y-%m-%d')} to {common_end.strftime('%Y-%m-%d')}")
     
-    # Create figure with subplots
-    fig, axes = plt.subplots(6, 1, figsize=(16, 20), sharex=True)
+    # Create figure with enhanced layout
+    fig = plt.figure(figsize=(20, 24))
     
-    # Define color scheme
-    colors = {
-        'buffet': '#1f77b4',      # Blue
-        'yield': '#ff7f0e',       # Orange  
-        'unemployment': '#2ca02c', # Green
-        'corporate': '#d62728',    # Red
-        'consumer': '#9467bd',     # Purple
-        'recession': '#ff6b6b'     # Light red
-    }
+    # Create 6 subplots in a 3x2 grid
+    gs = fig.add_gridspec(6, 1, height_ratios=[1, 1, 1, 1, 1, 0.4], hspace=0.3)
     
-    # Panel 1: Buffet Indicator
-    ax1 = axes[0]
-    if not buffet_data.empty:
-        buffet_filtered = buffet_data[(buffet_data.index >= common_start) & (buffet_data.index <= common_end)]
-        add_recession_shading(ax1, data_start=common_start, data_end=common_end, 
-                             alpha=0.15, color=colors['recession'], label_first=True)
-        
-        ax1.plot(buffet_filtered.index, buffet_filtered.values, 
-                linewidth=2, color=colors['buffet'], label='Buffet Indicator')
-        ax1.set_ylabel('Market Cap / GDP (%)')
-        ax1.set_title('Buffet Indicator - Market Valuation Relative to GDP', fontweight='bold', fontsize=14)
-        ax1.grid(True, alpha=0.3)
-        ax1.legend()
+    # Panel 1: Market Indices (SP500 & QQQ)
+    ax1 = fig.add_subplot(gs[0])
+    create_market_indices_chart(ax1, market_indices, common_start, common_end)
     
-    # Panel 2: 10Y-2Y Yield Spread
-    ax2 = axes[1]
-    if not yield_spread.empty:
-        yield_filtered = yield_spread[(yield_spread.index >= common_start) & (yield_spread.index <= common_end)]
-        add_recession_shading(ax2, data_start=common_start, data_end=common_end, 
-                             alpha=0.15, color=colors['recession'], label_first=False)
-        
-        ax2.plot(yield_filtered.index, yield_filtered.values, 
-                linewidth=1.5, color=colors['yield'], label='10Y-2Y Spread')
-        ax2.axhline(y=0, color='red', linestyle='--', alpha=0.7, label='Inversion Level')
-        ax2.fill_between(yield_filtered.index, yield_filtered.values, 0,
-                        where=(yield_filtered.values < 0), color='red', alpha=0.2, label='Inverted')
-        ax2.set_ylabel('Spread (percentage points)')
-        ax2.set_title('10Y-2Y Treasury Spread - Yield Curve Inversion Indicator', fontweight='bold', fontsize=14)
-        ax2.grid(True, alpha=0.3)
-        ax2.legend()
+    # Panel 2: Buffet Indicator (Full Chart)
+    ax2 = fig.add_subplot(gs[1])
+    create_buffet_chart(ax2, buffet_data, common_start, common_end)
     
-    # Panel 3: Unemployment Rate
-    ax3 = axes[2]
-    if not unemployment.empty:
-        unemployment_filtered = unemployment[(unemployment.index >= common_start) & (unemployment.index <= common_end)]
-        add_recession_shading(ax3, data_start=common_start, data_end=common_end, 
-                             alpha=0.15, color=colors['recession'], label_first=False)
-        
-        ax3.plot(unemployment_filtered.index, unemployment_filtered.values, 
-                linewidth=2, color=colors['unemployment'], label='Unemployment Rate')
-        ax3.set_ylabel('Unemployment Rate (%)')
-        ax3.set_title('Unemployment Rate - Labor Market Health', fontweight='bold', fontsize=14)
-        ax3.grid(True, alpha=0.3)
-        ax3.legend()
+    # Panel 3: 10Y-2Y Yield Spread
+    ax3 = fig.add_subplot(gs[2])
+    create_yield_curve_chart(ax3, yield_data, common_start, common_end)
     
-    # Panel 4: Corporate Profits Growth
-    ax4 = axes[3]
-    if not corporate_profits.empty:
-        corporate_filtered = corporate_profits[(corporate_profits.index >= common_start) & (corporate_profits.index <= common_end)]
-        add_recession_shading(ax4, data_start=common_start, data_end=common_end, 
-                             alpha=0.15, color=colors['recession'], label_first=False)
-        
-        ax4.plot(corporate_filtered.index, corporate_filtered.values, 
-                linewidth=2, color=colors['corporate'], label='Corporate Profits Growth')
-        ax4.axhline(y=0, color='gray', linestyle='--', alpha=0.7)
-        ax4.set_ylabel('YoY Growth (%)')
-        ax4.set_title('Corporate Profits Growth - Business Sector Health', fontweight='bold', fontsize=14)
-        ax4.grid(True, alpha=0.3)
-        ax4.legend()
+    # Panel 4: Unemployment Rate
+    ax4 = fig.add_subplot(gs[3])
+    create_labor_chart(ax4, labor_data, common_start, common_end)
     
-    # Panel 5: Consumer Confidence
-    ax5 = axes[4]
-    if not consumer_confidence.empty:
-        consumer_filtered = consumer_confidence[(consumer_confidence.index >= common_start) & (consumer_confidence.index <= common_end)]
-        add_recession_shading(ax5, data_start=common_start, data_end=common_end, 
-                             alpha=0.15, color=colors['recession'], label_first=False)
-        
-        ax5.plot(consumer_filtered.index, consumer_filtered.values, 
-                linewidth=2, color=colors['consumer'], label='Consumer Confidence')
-        ax5.set_ylabel('Index Level')
-        ax5.set_title('Consumer Confidence - Consumer Sentiment and Spending Outlook', fontweight='bold', fontsize=14)
-        ax5.grid(True, alpha=0.3)
-        ax5.legend()
+    # Panel 5: Corporate Profits Growth
+    ax5 = fig.add_subplot(gs[4])
+    create_corporate_profits_chart(ax5, corporate_profits, common_start, common_end)
     
-    # Panel 6: Economic Correlation Summary
-    ax6 = axes[5]
+    # Panel 6: Summary and Interpretation
+    ax6 = fig.add_subplot(gs[5])
     ax6.axis('off')
     
-    # Create summary text
-    summary_text = f"""ECONOMIC INDICATORS CORRELATION ANALYSIS
-    
+    # Create enhanced summary text
+    summary_text = f"""ENHANCED ECONOMIC DASHBOARD - COMPREHENSIVE ANALYSIS WITH FULL CHARTS
+
 📅 Analysis Period: {common_start.strftime('%Y-%m-%d')} to {common_end.strftime('%Y-%m-%d')}
 🔴 Red Shaded Areas: NBER Official Recession Periods
 
-KEY RELATIONSHIPS TO OBSERVE:
+CHART DETAILS & INTERPRETATION:
 
-🎯 Buffet Indicator (Market Valuation):
-   • High values often precede market corrections
-   • Peaks before recessions, troughs after recessions
-   • Compare with other indicators for timing signals
+📈 Market Indices (Top Panel):
+   • S&P 500 (left axis, blue) & NASDAQ-100/QQQ (right axis, orange)
+   • Dual y-axes allow comparison of relative movements despite different price scales
+   • Compare trends and timing with Buffet Indicator for valuation context
 
-📈 10Y-2Y Yield Spread (Recession Predictor):
-   • Inversions (negative values) typically precede recessions by 6-18 months
-   • Most reliable leading indicator of economic downturns
-   • Fed policy and expectations reflected in curve shape
+🎯 Buffett Indicator (Panel 2):
+   • Full chart with rolling mean and long-term trend lines (reusing buffet.py)
+   • High values often precede market corrections and recessions
+   • Rolling mean adapts to structural changes, trend shows secular drift
 
-👥 Unemployment Rate (Lagging Indicator):
-   • Rises during and after recessions (lagging indicator)
-   • Peak unemployment often signals recession end
-   • Key measure of labor market health and recovery
+📊 10Y-2Y Treasury Spread (Panel 3):
+   • Full yield curve analysis with inversion detection (from yield_curve_tracker.py)  
+   • Red shading = inverted curve (negative spread)
+   • Inversions typically precede recessions by 6-18 months
 
-💼 Corporate Profits Growth (Business Health):
-   • Leading indicator of economic cycles
-   • Negative growth often precedes broader economic weakness
-   • Recovery typically leads overall economic recovery
+👥 Unemployment Rate (Panel 4):
+   • Labor market health indicator (from labor_market_tracker.py style)
+   • Lagging indicator - peaks often signal recession end
+   • Rising unemployment confirms economic weakness
 
-🛍️ Consumer Confidence (Spending Outlook):
-   • Forward-looking sentiment indicator
-   • Drops before recessions as consumers become cautious
-   • Recovery indicates returning economic optimism
+💼 Corporate Profits Growth (Panel 5):
+   • Year-over-year business sector health indicator
+   • Leading indicator often turns before broader economy
+   • Negative growth signals business cycle weakness
 
-💡 INTERPRETATION FRAMEWORK:
-   1. Watch for yield curve inversions as early warning
-   2. Monitor Buffet Indicator for market overvaluation
-   3. Corporate profits signal business cycle turns
-   4. Consumer confidence reflects sentiment shifts
-   5. Unemployment confirms cycle phases (lagging)
+🎯 KEY RELATIONSHIPS TO OBSERVE:
+   1. Market peaks often coincide with Buffet Indicator extremes
+   2. Yield curve inversions provide 6-18 month recession warning
+   3. Corporate profits typically lead the cycle
+   4. Unemployment rises during recessions (confirms weakness)
+   5. Market recovery often begins before unemployment peaks
 
-🎯 Use this dashboard to identify:
-   • Leading indicators turning before recessions
-   • Correlation patterns across economic cycles  
-   • Market timing and valuation assessment opportunities
-   • Economic cycle phase identification"""
+💡 TRADING/INVESTMENT INSIGHTS:
+   • Use yield curve for recession timing
+   • Monitor Buffet Indicator for market valuation extremes  
+   • Corporate profits signal business cycle turns
+   • Market indices show actual price action and trends"""
     
     ax6.text(0.02, 0.98, summary_text, transform=ax6.transAxes, fontsize=10,
              verticalalignment='top', fontfamily='monospace')
     
-    # Format x-axis
-    for ax in axes[:-1]:  # All except summary panel
+    # Format x-axis for all chart panels
+    for ax in [ax1, ax2, ax3, ax4, ax5]:
         ax.xaxis.set_major_locator(mdates.YearLocator(2))
         ax.xaxis.set_minor_locator(mdates.YearLocator())
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
         ax.tick_params(axis='x', rotation=0)
     
     # Main title
-    fig.suptitle('Economic Summary Dashboard - Key Indicators with Recession Alignment', 
-                 fontsize=18, fontweight='bold', y=0.995)
+    fig.suptitle('Enhanced Economic Summary Dashboard - Full Charts with Market Context', 
+                 fontsize=20, fontweight='bold', y=0.995)
     
     plt.tight_layout()
     plt.subplots_adjust(top=0.97)
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
     
-    print(f"✅ Economic summary dashboard saved as '{save_path}'")
-    print("📊 Dashboard shows synchronized view of key economic indicators")
-    print("🎯 Use this view to analyze relationships across economic cycles")
+    print(f"✅ Enhanced economic summary dashboard saved as '{save_path}'")
+    print("📊 Dashboard shows full charts reused from individual analysis tools")
+    print("🎯 Complete view includes market indices, detailed indicators, and recession alignment")
 
 # ============================================================================
 # MAIN FUNCTION
