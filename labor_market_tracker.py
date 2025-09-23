@@ -44,6 +44,56 @@ from typing import Dict, Optional, Tuple
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
+# NBER recession dates (official business cycle dating)
+NBER_RECESSIONS = [
+    ('1990-07-01', '1991-03-01'),  # Early 1990s recession
+    ('2001-03-01', '2001-11-01'),  # Dot-com recession  
+    ('2007-12-01', '2009-06-01'),  # Great Recession
+    ('2020-02-01', '2020-04-01')   # COVID recession
+]
+
+def add_recession_shading(ax, data_start=None, data_end=None, alpha=0.2, color='gray', label_first=True):
+    """
+    Add NBER recession shading to a matplotlib axis.
+    
+    Parameters:
+    - ax: matplotlib axis object
+    - data_start: start date of data (datetime or string), for filtering relevant recessions
+    - data_end: end date of data (datetime or string), for filtering relevant recessions  
+    - alpha: transparency of shading (0-1)
+    - color: color of recession shading
+    - label_first: whether to add legend label to first recession only
+    """
+    if data_start is not None:
+        if isinstance(data_start, str):
+            data_start = pd.to_datetime(data_start)
+        if isinstance(data_start, pd.Timestamp):
+            data_start = data_start.to_pydatetime()
+    
+    if data_end is not None:
+        if isinstance(data_end, str):
+            data_end = pd.to_datetime(data_end)
+        if isinstance(data_end, pd.Timestamp):
+            data_end = data_end.to_pydatetime()
+    
+    labeled = False
+    for i, (start_str, end_str) in enumerate(NBER_RECESSIONS):
+        start_date = pd.to_datetime(start_str)
+        end_date = pd.to_datetime(end_str)
+        
+        # Skip recessions outside our data range
+        if data_start and end_date < data_start:
+            continue
+        if data_end and start_date > data_end:
+            continue
+            
+        # Add shading
+        label = 'NBER Recession' if label_first and not labeled else ''
+        ax.axvspan(start_date, end_date, alpha=alpha, color=color, label=label)
+        
+        if label_first and not labeled:
+            labeled = True
+
 # ============================================================================
 # DATA FETCHING FUNCTIONS
 # ============================================================================
@@ -382,6 +432,11 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
     ax1 = plt.subplot(3, 3, 1)
     if 'Unemployment_Rate' in data_dict:
         unemployment = data_dict['Unemployment_Rate'].dropna()
+        
+        # Add recession shading first
+        add_recession_shading(ax1, data_start=unemployment.index[0], data_end=unemployment.index[-1], 
+                             alpha=0.15, color='red', label_first=True)
+        
         ax1.plot(unemployment.index, unemployment.values, linewidth=1.5, color=colors['weak'])
         ax1.fill_between(unemployment.index, unemployment.values, alpha=0.3, color=colors['weak'])
         ax1.set_title('Unemployment Rate (%)\n(Lower = Better)')
@@ -402,6 +457,11 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
     ax3 = plt.subplot(3, 3, 3)
     if 'Job_Openings' in data_dict:
         openings = data_dict['Job_Openings'].dropna()
+        
+        # Add recession shading
+        add_recession_shading(ax3, data_start=openings.index[0], data_end=openings.index[-1], 
+                             alpha=0.15, color='red', label_first=False)
+        
         ax3.plot(openings.index, openings.values, linewidth=1.5, color=colors['strong'])
         ax3.fill_between(openings.index, openings.values, alpha=0.3, color=colors['strong'])
         ax3.set_title('Job Openings (JOLTS)\n(Higher = Better)')

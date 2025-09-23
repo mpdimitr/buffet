@@ -10,6 +10,56 @@ import argparse
 import numpy as np
 import yfinance as yf
 
+# NBER recession dates (official business cycle dating)
+NBER_RECESSIONS = [
+    ('1990-07-01', '1991-03-01'),  # Early 1990s recession
+    ('2001-03-01', '2001-11-01'),  # Dot-com recession  
+    ('2007-12-01', '2009-06-01'),  # Great Recession
+    ('2020-02-01', '2020-04-01')   # COVID recession
+]
+
+def add_recession_shading(ax, data_start=None, data_end=None, alpha=0.2, color='gray', label_first=True):
+    """
+    Add NBER recession shading to a matplotlib axis.
+    
+    Parameters:
+    - ax: matplotlib axis object
+    - data_start: start date of data (datetime or string), for filtering relevant recessions
+    - data_end: end date of data (datetime or string), for filtering relevant recessions  
+    - alpha: transparency of shading (0-1)
+    - color: color of recession shading
+    - label_first: whether to add legend label to first recession only
+    """
+    if data_start is not None:
+        if isinstance(data_start, str):
+            data_start = pd.to_datetime(data_start)
+        if isinstance(data_start, pd.Timestamp):
+            data_start = data_start.to_pydatetime()
+    
+    if data_end is not None:
+        if isinstance(data_end, str):
+            data_end = pd.to_datetime(data_end)
+        if isinstance(data_end, pd.Timestamp):
+            data_end = data_end.to_pydatetime()
+    
+    labeled = False
+    for i, (start_str, end_str) in enumerate(NBER_RECESSIONS):
+        start_date = pd.to_datetime(start_str)
+        end_date = pd.to_datetime(end_str)
+        
+        # Skip recessions outside our data range
+        if data_start and end_date < data_start:
+            continue
+        if data_end and start_date > data_end:
+            continue
+            
+        # Add shading
+        label = 'NBER Recession' if label_first and not labeled else ''
+        ax.axvspan(start_date, end_date, alpha=alpha, color=color, label=label)
+        
+        if label_first and not labeled:
+            labeled = True
+
 # 1) Get Wilshire 5000 market cap and US GDP data
 # We'll fetch daily Wilshire from Yahoo Finance, and quarterly GDP from FRED; 
 # convert both to quarterly by resampling (end of quarter).
@@ -99,6 +149,11 @@ fig, axes = plt.subplots(3, 1, figsize=(13, 13), sharex=True,
 
 # Panel 1: Buffett Indicator with rolling mean & trend + bands
 ax = axes[0]
+
+# Add recession shading first (so it appears behind the data)
+add_recession_shading(ax, data_start=df_plot_core.index[0], data_end=df_plot_core.index[-1], 
+                     alpha=0.15, color='red', label_first=True)
+
 ax.plot(df_plot_core.index, df_plot_core['Buffett_pct_of_GDP'], label='Buffett Indicator (%)', linewidth=1.6, color='tab:blue')
 ax.plot(df_plot_core.index, df_plot_core['RollingMean'], label=f'Rolling Mean ({window}q)', linewidth=1.1, linestyle='--', color='tab:green')
 ax.plot(df_plot_core.index, df_plot_core['Trend'], label='Log-Linear Trend', linewidth=1.1, linestyle=':', color='tab:purple')
@@ -125,6 +180,11 @@ ax.legend(loc='upper left')
 
 # Panel 2: Z-Score with background highlighting
 ax2 = axes[1]
+
+# Add recession shading
+add_recession_shading(ax2, data_start=df_plot.index[0], data_end=df_plot.index[-1], 
+                     alpha=0.15, color='red', label_first=False)
+
 ax2.plot(df_plot.index, df_plot['ZScore'], color='tab:purple', linewidth=1.1)
 ax2.axhline(0, color='black', linewidth=0.7)
 ax2.axhline(1, color='red', linewidth=0.7, linestyle='--')
@@ -142,6 +202,11 @@ ax2.fill_between(df_plot.index, zs, -1, where=zs<-1, color='green', alpha=0.10, 
 
 # Panel 3: Trend Residual & Percentile
 ax3 = axes[2]
+
+# Add recession shading
+add_recession_shading(ax3, data_start=df_plot.index[0], data_end=df_plot.index[-1], 
+                     alpha=0.15, color='red', label_first=False)
+
 ax3.plot(df_plot.index, df_plot['TrendResidual'], color='tab:orange', linewidth=1.1, label='Trend Residual (Actual / Trend)')
 ax3.axhline(1.0, color='black', linewidth=0.8)
 ax3.axhline(1.15, color='red', linewidth=0.8, linestyle='--')

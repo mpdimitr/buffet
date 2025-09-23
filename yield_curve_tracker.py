@@ -43,6 +43,56 @@ from typing import Dict, Optional, Tuple
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=RuntimeWarning)
 
+# NBER recession dates (official business cycle dating)
+NBER_RECESSIONS = [
+    ('1990-07-01', '1991-03-01'),  # Early 1990s recession
+    ('2001-03-01', '2001-11-01'),  # Dot-com recession  
+    ('2007-12-01', '2009-06-01'),  # Great Recession
+    ('2020-02-01', '2020-04-01')   # COVID recession
+]
+
+def add_recession_shading(ax, data_start=None, data_end=None, alpha=0.2, color='gray', label_first=True):
+    """
+    Add NBER recession shading to a matplotlib axis.
+    
+    Parameters:
+    - ax: matplotlib axis object
+    - data_start: start date of data (datetime or string), for filtering relevant recessions
+    - data_end: end date of data (datetime or string), for filtering relevant recessions  
+    - alpha: transparency of shading (0-1)
+    - color: color of recession shading
+    - label_first: whether to add legend label to first recession only
+    """
+    if data_start is not None:
+        if isinstance(data_start, str):
+            data_start = pd.to_datetime(data_start)
+        if isinstance(data_start, pd.Timestamp):
+            data_start = data_start.to_pydatetime()
+    
+    if data_end is not None:
+        if isinstance(data_end, str):
+            data_end = pd.to_datetime(data_end)
+        if isinstance(data_end, pd.Timestamp):
+            data_end = data_end.to_pydatetime()
+    
+    labeled = False
+    for i, (start_str, end_str) in enumerate(NBER_RECESSIONS):
+        start_date = pd.to_datetime(start_str)
+        end_date = pd.to_datetime(end_str)
+        
+        # Skip recessions outside our data range
+        if data_start and end_date < data_start:
+            continue
+        if data_end and start_date > data_end:
+            continue
+            
+        # Add shading
+        label = 'NBER Recession' if label_first and not labeled else ''
+        ax.axvspan(start_date, end_date, alpha=alpha, color=color, label=label)
+        
+        if label_first and not labeled:
+            labeled = True
+
 # ============================================================================
 # DATA FETCHING FUNCTIONS
 # ============================================================================
@@ -280,6 +330,11 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax2 = plt.subplot(2, 3, 2)
     if '10Y-2Y' in spreads_df.columns:
         spread_data = spreads_df['10Y-2Y'].dropna()
+        
+        # Add recession shading first
+        add_recession_shading(ax2, data_start=spread_data.index[0], data_end=spread_data.index[-1], 
+                             alpha=0.15, color='red', label_first=True)
+        
         ax2.plot(spread_data.index, spread_data.values, linewidth=1.5, color=colors['neutral'])
         ax2.axhline(y=0, color=colors['danger'], linestyle='--', alpha=0.7, label='Inversion Level')
         ax2.fill_between(spread_data.index, spread_data.values, 0, 
@@ -296,6 +351,11 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax3 = plt.subplot(2, 3, 3)
     if '10Y-3M' in spreads_df.columns:
         spread_data = spreads_df['10Y-3M'].dropna()
+        
+        # Add recession shading
+        add_recession_shading(ax3, data_start=spread_data.index[0], data_end=spread_data.index[-1], 
+                             alpha=0.15, color='red', label_first=False)
+        
         ax3.plot(spread_data.index, spread_data.values, linewidth=1.5, color=colors['neutral'])
         ax3.axhline(y=0, color=colors['danger'], linestyle='--', alpha=0.7)
         ax3.fill_between(spread_data.index, spread_data.values, 0,
@@ -311,6 +371,10 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax4 = plt.subplot(2, 3, 4)
     risk_data = risk_scores.dropna()
     if not risk_data.empty:
+        # Add recession shading
+        add_recession_shading(ax4, data_start=risk_data.index[0], data_end=risk_data.index[-1], 
+                             alpha=0.15, color='red', label_first=False)
+        
         # Color code risk levels
         risk_colors = []
         for score in risk_data.values:
@@ -341,6 +405,14 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     
     # Subplot 5: All Spreads Comparison
     ax5 = plt.subplot(2, 3, 5)
+    
+    # Add recession shading first
+    if not spreads_df.empty:
+        data_start = spreads_df.dropna().index[0] if not spreads_df.dropna().empty else None
+        data_end = spreads_df.dropna().index[-1] if not spreads_df.dropna().empty else None
+        add_recession_shading(ax5, data_start=data_start, data_end=data_end, 
+                             alpha=0.15, color='red', label_first=False)
+    
     for col in spreads_df.columns:
         if col in spreads_df.columns:
             spread_data = spreads_df[col].dropna()
