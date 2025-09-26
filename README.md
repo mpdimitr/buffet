@@ -342,4 +342,68 @@ python corporate_earnings_tracker.py --min-data-points 50
 - `corporate_earnings_analysis.csv` – Time series with all indicators and composite metrics
 
 ---
+
+## 14. Economic Summary Dashboard - Comprehensive Indicator Alignment
+
+The **Economic Summary Dashboard** provides a synchronized view of all key economic indicators aligned over the same time period, making it easy to analyze relationships between market valuation, yield curves, employment, and recession periods.
+
+### Key Features
+- **Synchronized Time Series**: All indicators aligned to common time axis for correlation analysis
+- **NBER Recession Shading**: Official recession periods overlaid on all panels for cycle identification
+- **Multi-Indicator View**: Buffet Indicator, 10Y-2Y yield spread, unemployment rate, corporate profits, consumer confidence
+- **Professional Layout**: 6-panel comprehensive dashboard with interpretation guide
+- **Flexible Time Ranges**: Configurable start dates from 1990 onwards
+
+### Indicators Included
+1. **Buffet Indicator**: Market valuation relative to GDP (leading/coincident)
+2. **10Y-2Y Treasury Spread**: Yield curve inversion recession predictor (leading, 6-18 months)
+3. **Unemployment Rate**: Labor market health indicator (lagging)
+4. **Corporate Profits Growth**: Business sector health (leading/coincident) 
+5. **Consumer Confidence**: Sentiment and spending outlook (leading)
+6. **NBER Recession Periods**: Official business cycle dating for reference
+
+### Usage
+```bash
+# Basic dashboard (from 2000)
+python economic_summary_dashboard.py
+
+# Full historical view (from 1990)
+python economic_summary_dashboard.py --start 1990-01-01
+
+# Custom output path
+python economic_summary_dashboard.py --start 2000-01-01 --save-path my_dashboard.png
+
+# Enhanced dashboard with full charts and market indices
+python economic_summary_dashboard.py --start 2000-01-01 --save-path enhanced_dashboard.png
+```
+
+### Output Files
+- `economic_summary_dashboard.png` – Comprehensive 6-panel synchronized indicator view
+- `economic_summary_dashboard_full.png` – Full historical view from 1990
+- `enhanced_economic_dashboard.png` – Enhanced version with full charts and market indices
+- `enhanced_economic_dashboard_full.png` – Enhanced historical view with complete data
+
+### Enhanced Features (Latest Version)
+- **Market Indices**: S&P 500 and NASDAQ-100 (QQQ) charts at the top for market context
+- **Full Chart Integration**: Reuses actual chart implementations from individual trackers
+- **Rich Visualizations**: Complete Buffet indicator with rolling mean and trend lines
+- **Detailed Yield Curve**: 10Y-2Y spread with full inversion analysis and shading
+- **Professional Styling**: Consistent with individual tracker visualizations
+- **Code Reuse**: Leverages existing chart functions for consistency and detail
+
+### Interpretation Framework
+- **Leading Indicators**: Yield curve inversions, corporate profits, consumer confidence signal turning points
+- **Coincident Indicators**: Buffet indicator reflects current market conditions and valuation extremes
+- **Lagging Indicators**: Unemployment confirms recession phases but peaks often signal recovery
+- **Recession Alignment**: Red shaded areas show official NBER recession periods for correlation analysis
+- **Timing Relationships**: Use dashboard to identify leading indicator patterns before recessions
+
+This dashboard is ideal for:
+- **Economic Cycle Analysis**: Understanding relationships across different economic phases
+- **Market Timing**: Identifying potential turning points through indicator convergence
+- **Risk Assessment**: Monitoring leading indicators for early warning signals
+- **Investment Strategy**: Coordinating valuation metrics with economic cycle positioning
+
+---
+
 Feel free to request additional metrics, alternative trend modeling, or an HTML interactive dashboard.
