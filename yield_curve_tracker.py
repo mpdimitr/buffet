@@ -38,6 +38,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -289,8 +290,8 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     """
     print("📈 Generating comprehensive yield curve visualization...")
     
-    # Create figure with subplots
-    fig = plt.figure(figsize=(16, 12))
+    # Create figure with single-column layout (6 panels stacked vertically)
+    fig = plt.figure(figsize=get_standard_figsize(6))
     
     # Define color scheme
     colors = {
@@ -300,8 +301,8 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
         'neutral': '#4682B4'      # Steel Blue
     }
     
-    # Subplot 1: Current Yield Curve Shape
-    ax1 = plt.subplot(2, 3, 1)
+    # Panel 1: Current Yield Curve Shape
+    ax1 = plt.subplot(6, 1, 1)
     latest_yields = yields_df.dropna().iloc[-1]
     maturities = ['3M', '2Y', '5Y', '10Y', '30Y']
     maturity_values = [0.25, 2, 5, 10, 30]  # Years
@@ -326,8 +327,8 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
         ax1.set_xticks(valid_maturity_values)
         ax1.set_xticklabels(valid_maturities)
     
-    # Subplot 2: 10Y-2Y Spread Over Time
-    ax2 = plt.subplot(2, 3, 2)
+    # Panel 2: 10Y-2Y Spread Over Time
+    ax2 = plt.subplot(6, 1, 2)
     if '10Y-2Y' in spreads_df.columns:
         spread_data = spreads_df['10Y-2Y'].dropna()
         
@@ -347,8 +348,8 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax2.grid(True, alpha=0.3)
     ax2.legend()
     
-    # Subplot 3: 10Y-3M Spread Over Time  
-    ax3 = plt.subplot(2, 3, 3)
+    # Panel 3: 10Y-3M Spread Over Time  
+    ax3 = plt.subplot(6, 1, 3)
     if '10Y-3M' in spreads_df.columns:
         spread_data = spreads_df['10Y-3M'].dropna()
         
@@ -368,7 +369,7 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax3.grid(True, alpha=0.3)
     
     # Subplot 4: Recession Risk Score
-    ax4 = plt.subplot(2, 3, 4)
+    ax4 = plt.subplot(6, 1, 4)
     risk_data = risk_scores.dropna()
     if not risk_data.empty:
         # Add recession shading
@@ -404,7 +405,7 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax4.legend(loc='upper left', fontsize=8)
     
     # Subplot 5: All Spreads Comparison
-    ax5 = plt.subplot(2, 3, 5)
+    ax5 = plt.subplot(6, 1, 5)
     
     # Add recession shading first
     if not spreads_df.empty:
@@ -426,7 +427,7 @@ def create_yield_curve_visualization(yields_df: pd.DataFrame, spreads_df: pd.Dat
     ax5.legend()
     
     # Subplot 6: Current Status Summary
-    ax6 = plt.subplot(2, 3, 6)
+    ax6 = plt.subplot(6, 1, 6)
     ax6.axis('off')
     
     # Get latest data for summary
@@ -464,6 +465,14 @@ KEY SPREADS:"""
     ax6.text(0.05, y_pos-0.05, interpretation, transform=ax6.transAxes, fontsize=9,
              verticalalignment='top', style='italic')
     
+    # Apply consistent time axis formatting to time-series panels (ax2-ax5)
+    # Note: ax1 shows yield curve shape, not time series, so it keeps custom x-axis
+    for ax in [ax2, ax3, ax4, ax5]:
+        try:
+            setup_aligned_time_axis(ax, major_interval_years=2)
+        except:
+            pass  # Skip if axis doesn't have time data
+    
     plt.tight_layout()
     plt.savefig('yield_curve_analysis.png', dpi=150, bbox_inches='tight')
     plt.close()
@@ -481,6 +490,42 @@ def get_risk_interpretation(risk_level: str) -> str:
         "Unknown": "Insufficient data for assessment."
     }
     return interpretations.get(risk_level, "Data quality insufficient for interpretation.")
+
+def create_yield_curve_chart(spread_data, start_date, end_date, save_path='yield_curve.png'):
+    """Create yield curve chart with aligned axes."""
+    fig, ax = plt.subplots(figsize=get_standard_figsize(1))
+    
+    # Add recession shading
+    add_recession_shading(ax, data_start=start_date, data_end=end_date, 
+                         alpha=0.15, color='red', label_first=True)
+    
+    # Plot spread
+    ax.plot(spread_data.index, spread_data.values, 
+           linewidth=1.5, color='#ff7f0e', label='10Y-2Y Spread')
+    
+    # Zero line and inversion shading
+    ax.axhline(y=0, color='red', linestyle='--', alpha=0.7, linewidth=1, label='Inversion Level')
+    ax.fill_between(spread_data.index, spread_data.values, 0,
+                   where=(spread_data.values < 0), color='red', alpha=0.2, label='Inverted')
+    ax.fill_between(spread_data.index, spread_data.values, 0,
+                   where=(spread_data.values >= 0), color='green', alpha=0.1, label='Normal')
+    
+    # Apply aligned time axis
+    setup_aligned_time_axis(ax, start_date=pd.to_datetime(start_date), 
+                           end_date=pd.to_datetime(end_date))
+    
+    add_chart_metadata(ax,
+                      title='10Y-2Y Treasury Spread - Primary Recession Indicator',
+                      ylabel='Spread (percentage points)',
+                      data_points=len(spread_data),
+                      frequency='daily')
+    
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
 
 # ============================================================================
 # MAIN ANALYSIS SCRIPT
@@ -642,6 +687,11 @@ Examples:
     # Generate visualization
     create_yield_curve_visualization(yields_df, spreads_df, risk_scores, args.window)
     print(f"   📈 yield_curve_analysis.png (comprehensive visualization)")
+    
+    # Generate yield curve chart
+    create_yield_curve_chart(spreads_df['10Y-2Y'], spreads_df.index[0], spreads_df.index[-1], save_path='yield_curve_10Y_2Y.png')
+    
+    print(f"   📈 yield_curve_10Y_2Y.png (10Y-2Y yield curve chart)")
     
     print(f"\n📊 Analysis window: {args.window} months")
     print(f"📡 Data source: Federal Reserve Economic Data (FRED)")

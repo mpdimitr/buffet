@@ -40,6 +40,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -345,7 +346,7 @@ def create_trade_visualization(data_dict: Dict[str, pd.Series], composite_index:
     """
     Create comprehensive international trade visualization.
     """
-    fig = plt.figure(figsize=(16, 20))
+    fig = plt.figure(figsize=get_standard_figsize(6))
     
     # Color scheme
     colors = {
@@ -529,20 +530,12 @@ def create_trade_visualization(data_dict: Dict[str, pd.Series], composite_index:
     
     ax6.set_title('Recent Trade Conditions Trend (Last 24 Months)', fontsize=14, fontweight='bold', pad=20)
     ax6.set_ylabel('Composite Score')
-    ax6.set_xlabel('Date')
     ax6.legend()
     ax6.grid(True, alpha=0.3)
     
-    # Format all date axes
+    # Format all date axes using chart_utils for alignment
     for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
-        ax.xaxis.set_major_locator(mdates.YearLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax.xaxis.set_minor_locator(mdates.MonthLocator((1, 7)))
-        
-        # Rotate labels for better readability
-        for label in ax.get_xticklabels():
-            label.set_rotation(45)
-            label.set_ha('right')
+        setup_aligned_time_axis(ax, major_interval_years=2)
     
     plt.tight_layout()
     plt.savefig('international_trade_analysis.png', dpi=300, bbox_inches='tight', 

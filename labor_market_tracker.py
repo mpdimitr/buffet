@@ -39,6 +39,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -417,8 +418,8 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
     """
     print("📈 Generating comprehensive labor market visualization...")
     
-    # Create figure with subplots
-    fig = plt.figure(figsize=(18, 14))
+    # Create figure with single-column layout (9 panels stacked vertically)
+    fig = plt.figure(figsize=get_standard_figsize(9))
     
     # Define color scheme
     colors = {
@@ -428,8 +429,8 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         'neutral': '#708090'      # Slate Gray
     }
     
-    # Subplot 1: Unemployment Rate
-    ax1 = plt.subplot(3, 3, 1)
+    # Panel 1: Unemployment Rate
+    ax1 = plt.subplot(9, 1, 1)
     if 'Unemployment_Rate' in data_dict:
         unemployment = data_dict['Unemployment_Rate'].dropna()
         
@@ -444,7 +445,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax1.grid(True, alpha=0.3)
     
     # Subplot 2: Initial Jobless Claims
-    ax2 = plt.subplot(3, 3, 2)
+    ax2 = plt.subplot(9, 1, 2)
     if 'Jobless_Claims' in data_dict:
         claims = data_dict['Jobless_Claims'].dropna()
         ax2.plot(claims.index, claims.values, linewidth=1.5, color=colors['weak'])
@@ -454,7 +455,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax2.grid(True, alpha=0.3)
     
     # Subplot 3: Job Openings
-    ax3 = plt.subplot(3, 3, 3)
+    ax3 = plt.subplot(9, 1, 3)
     if 'Job_Openings' in data_dict:
         openings = data_dict['Job_Openings'].dropna()
         
@@ -469,7 +470,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax3.grid(True, alpha=0.3)
     
     # Subplot 4: Labor Force Participation
-    ax4 = plt.subplot(3, 3, 4)
+    ax4 = plt.subplot(9, 1, 4)
     if 'Labor_Force_Participation' in data_dict:
         participation = data_dict['Labor_Force_Participation'].dropna()
         ax4.plot(participation.index, participation.values, linewidth=1.5, color=colors['normal'])
@@ -479,7 +480,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax4.grid(True, alpha=0.3)
     
     # Subplot 5: Employment-Population Ratio
-    ax5 = plt.subplot(3, 3, 5)
+    ax5 = plt.subplot(9, 1, 5)
     if 'Employment_Population_Ratio' in data_dict:
         emp_ratio = data_dict['Employment_Population_Ratio'].dropna()
         ax5.plot(emp_ratio.index, emp_ratio.values, linewidth=1.5, color=colors['strong'])
@@ -489,7 +490,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax5.grid(True, alpha=0.3)
     
     # Subplot 6: Nonfarm Payroll Changes
-    ax6 = plt.subplot(3, 3, 6)
+    ax6 = plt.subplot(9, 1, 6)
     if 'Payroll_Changes' in data_dict:
         payrolls = data_dict['Payroll_Changes'].dropna()
         # Color positive/negative changes
@@ -505,7 +506,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax6.legend()
     
     # Subplot 7: Composite Labor Market Index
-    ax7 = plt.subplot(3, 3, 7)
+    ax7 = plt.subplot(9, 1, 7)
     if not composite_index.empty:
         # Color code by strength level
         composite_colors = []
@@ -536,7 +537,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
     ax7.legend(loc='upper left', fontsize=8)
     
     # Subplot 8: All Normalized Indicators
-    ax8 = plt.subplot(3, 3, 8)
+    ax8 = plt.subplot(9, 1, 8)
     if not combined_df.empty:
         for col in combined_df.columns:
             if '_norm' in col:
@@ -553,7 +554,7 @@ def create_labor_market_visualization(data_dict: Dict[str, pd.Series], composite
         ax8.legend(loc='upper left', fontsize=7)
     
     # Subplot 9: Current Status Summary
-    ax9 = plt.subplot(3, 3, 9)
+    ax9 = plt.subplot(9, 1, 9)
     ax9.axis('off')
     
     # Get latest data for summary
@@ -610,6 +611,35 @@ KEY INDICATORS:"""
     plt.close()
     
     print("✅ Labor market visualization saved as 'labor_market_analysis.png'")
+
+def create_labor_chart(unemployment_data, start_date, end_date):
+    """Create unemployment chart with aligned axes."""
+    fig, ax = plt.subplots(figsize=get_standard_figsize(1))
+    
+    # Add recession shading
+    add_recession_shading(ax, data_start=start_date, data_end=end_date, 
+                         alpha=0.15, color='red', label_first=True)
+    
+    # Plot unemployment rate
+    ax.plot(unemployment_data.index, unemployment_data.values, 
+           linewidth=2, color='#2ca02c', label='Unemployment Rate')
+    
+    # Apply aligned time axis
+    setup_aligned_time_axis(ax, start_date=pd.to_datetime(start_date), 
+                           end_date=pd.to_datetime(end_date))
+    
+    add_chart_metadata(ax,
+                      title='Unemployment Rate - Labor Market Health',
+                      ylabel='Unemployment Rate (%)',
+                      data_points=len(unemployment_data),
+                      frequency='monthly')
+    
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig('labor_market.png', dpi=150, bbox_inches='tight')
+    plt.close()
 
 # ============================================================================
 # MAIN ANALYSIS SCRIPT

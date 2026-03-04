@@ -49,6 +49,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -483,7 +484,7 @@ def create_consumer_visualizations(data_dict: Dict[str, pd.Series], composite_in
     
     # Set up the plotting style
     plt.style.use('default')
-    fig = plt.figure(figsize=(16, 20))
+    fig = plt.figure(figsize=get_standard_figsize(6))
     
     # Color scheme
     colors = {
@@ -592,11 +593,9 @@ def create_consumer_visualizations(data_dict: Dict[str, pd.Series], composite_in
         ax6.grid(True, alpha=0.3)
         ax6.legend()
     
-    # Format x-axis for all subplots
+    # Format x-axis for all subplots using chart_utils for alignment
     for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
-        ax.xaxis.set_major_locator(mdates.YearLocator(2))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax.tick_params(axis='x', rotation=45)
+        setup_aligned_time_axis(ax, major_interval_years=2)
     
     plt.tight_layout()
     

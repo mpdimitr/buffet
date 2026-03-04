@@ -53,6 +53,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -335,7 +336,7 @@ def create_cape_visualization(metrics: Dict[str, pd.Series], sp500_data: pd.Seri
     trend_residual = metrics['TrendResidual']
     
     # Create figure with subplots
-    fig, axes = plt.subplots(4, 1, figsize=(16, 16), sharex=True,
+    fig, axes = plt.subplots(4, 1, figsize=get_standard_figsize(4), sharex=True,
                            gridspec_kw={'height_ratios': [2.5, 1, 1, 1.5]})
     
     # Panel 1: CAPE Ratio with bands and trend
@@ -443,11 +444,9 @@ def create_cape_visualization(metrics: Dict[str, pd.Series], sp500_data: pd.Seri
     ax4.grid(True, alpha=0.3)
     ax4.legend()
     
-    # Format x-axis
+    # Format x-axis using chart_utils for alignment (use 2-year intervals for consistency)
     for ax in axes:
-        ax.xaxis.set_major_locator(mdates.YearLocator(5))
-        ax.xaxis.set_minor_locator(mdates.YearLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        setup_aligned_time_axis(ax, major_interval_years=2)
     
     plt.tight_layout()
     

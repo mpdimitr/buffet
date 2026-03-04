@@ -9,6 +9,7 @@ import datetime
 import argparse
 import numpy as np
 import yfinance as yf
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_standard_figsize
 
 # NBER recession dates (official business cycle dating)
 NBER_RECESSIONS = [
@@ -144,7 +145,7 @@ df_plot_out = df_plot.copy()
 df_plot_core = df_plot[['Buffett_pct_of_GDP','RollingMean','Trend']]
 
 # Plot
-fig, axes = plt.subplots(3, 1, figsize=(13, 13), sharex=True,
+fig, axes = plt.subplots(3, 1, figsize=get_standard_figsize(3), sharex=True,
                          gridspec_kw={'height_ratios':[2.4,1,1]})
 
 # Panel 1: Buffett Indicator with rolling mean & trend + bands
@@ -173,10 +174,10 @@ ax.plot(df_plot_core.index, roll_mean - 2*roll_std, linestyle='-', linewidth=0.8
 ax.plot(df_plot_core.index, ewm_mean, linewidth=0.9, linestyle='-.', color='orange', label='EWM Mean')
 ax.plot(df_plot_core.index, ewm_mean + ewm_std, linewidth=0.6, linestyle='-.', color='orange', alpha=0.8, label='EWM ±1σ')
 ax.plot(df_plot_core.index, ewm_mean - ewm_std, linewidth=0.6, linestyle='-.', color='orange', alpha=0.8)
-ax.set_ylabel('% of GDP')
-ax.set_title('Buffett Indicator (Market Cap / GDP) with Rolling Mean, Trend and ±1σ Band')
+ax.set_ylabel('% of GDP', fontsize=10)
+ax.set_title('Buffett Indicator (Market Cap / GDP) with Rolling Mean, Trend and ±1σ Band', fontweight='bold', fontsize=12, pad=10)
 ax.grid(True, alpha=0.3)
-ax.legend(loc='upper left')
+ax.legend(loc='upper left', fontsize=9)
 
 # Panel 2: Z-Score with background highlighting
 ax2 = axes[1]
@@ -191,8 +192,8 @@ ax2.axhline(1, color='red', linewidth=0.7, linestyle='--')
 ax2.axhline(-1, color='green', linewidth=0.7, linestyle='--')
 ax2.axhline(2, color='red', linewidth=0.6, linestyle=':')
 ax2.axhline(-2, color='green', linewidth=0.6, linestyle=':')
-ax2.set_ylabel('Z-Score')
-ax2.set_title('Valuation Z-Score (Rolling)')
+ax2.set_ylabel('Z-Score', fontsize=10)
+ax2.set_title('Valuation Z-Score (Rolling)', fontweight='bold', fontsize=12, pad=10)
 ax2.grid(True, alpha=0.3)
 
 # Highlight zones where z-score outside ±1
@@ -211,10 +212,10 @@ ax3.plot(df_plot.index, df_plot['TrendResidual'], color='tab:orange', linewidth=
 ax3.axhline(1.0, color='black', linewidth=0.8)
 ax3.axhline(1.15, color='red', linewidth=0.8, linestyle='--')
 ax3.axhline(0.90, color='green', linewidth=0.8, linestyle='--')
-ax3.set_ylabel('Residual Ratio')
-ax3.set_title('Trend Residual (Above 1 = Above Trend)')
+ax3.set_ylabel('Residual Ratio', fontsize=10)
+ax3.set_title('Trend Residual (Above 1 = Above Trend)', fontweight='bold', fontsize=12, pad=10)
 ax3.grid(True, alpha=0.3)
-ax3.legend(loc='upper left')
+ax3.legend(loc='upper left', fontsize=9)
 
 # Regime annotations when residual crosses thresholds
 resid = df_plot['TrendResidual']
@@ -226,6 +227,10 @@ for dt in cross_up:
 for dt in cross_down:
     ax3.axvline(dt, color='green', alpha=0.2, linewidth=1)
     ax3.text(dt, 0.89, '↓<0.90', color='green', fontsize=7, rotation=90, va='top', ha='center')
+
+# Apply aligned time axis to all panels
+for ax in axes:
+    setup_aligned_time_axis(ax, start_date=df_plot.index[0], end_date=df_plot.index[-1])
 
 plt.tight_layout()
 plt.savefig('buffett_indicator_enhanced.png', dpi=150)

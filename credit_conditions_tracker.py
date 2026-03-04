@@ -9,8 +9,8 @@ tightens, economic growth slows; when credit is loose, growth accelerates.
 
 Key Metrics Tracked:
 - Corporate Credit Spreads: Investment grade and high yield bond spreads
-- Bank Lending Standards: Fed's Senior Loan Officer Opinion Survey (SLOOS)
-- Commercial & Industrial Loans: Business lending growth
+- Bank Lending Standards: Fed's Senior Loan Officer Opinion Survey (SLOOS)    # Panel 8: Credit Spread Comparison
+    ax8 = plt.subplot(12, 1, 8) Commercial & Industrial Loans: Business lending growth
 - Consumer Credit: Household borrowing trends
 - Mortgage Rates vs Treasury: Housing credit conditions
 - Term Structure of Credit: Short vs long-term credit availability
@@ -40,6 +40,7 @@ import argparse
 import numpy as np
 import warnings
 from typing import Dict, Optional, Tuple
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -438,8 +439,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
     """
     print("📈 Generating comprehensive credit conditions visualization...")
     
-    # Create figure with subplots
-    fig = plt.figure(figsize=(20, 14))
+    # Create figure with single-column layout (12 panels stacked vertically)
+    fig = plt.figure(figsize=get_standard_figsize(12))
     
     # Define color scheme
     colors = {
@@ -449,8 +450,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         'neutral': '#708090'      # Slate Gray
     }
     
-    # Subplot 1: High Yield Credit Spreads
-    ax1 = plt.subplot(3, 4, 1)
+    # Panel 1: High Yield Credit Spreads
+    ax1 = plt.subplot(12, 1, 1)
     if 'BAMLH0A0HYM2' in data_dict:
         hy_spread = data_dict['BAMLH0A0HYM2'].dropna()
         ax1.plot(hy_spread.index, hy_spread.values, linewidth=1.5, color=colors['tight'])
@@ -459,8 +460,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax1.set_ylabel('Spread (%)')
         ax1.grid(True, alpha=0.3)
     
-    # Subplot 2: Investment Grade Credit Spreads
-    ax2 = plt.subplot(3, 4, 2)
+    # Panel 2: Investment Grade Credit Spreads
+    ax2 = plt.subplot(12, 1, 2)
     if 'BAMLC0A0CM' in data_dict:
         ig_spread = data_dict['BAMLC0A0CM'].dropna()
         ax2.plot(ig_spread.index, ig_spread.values, linewidth=1.5, color=colors['tight'])
@@ -469,8 +470,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax2.set_ylabel('Spread (%)')
         ax2.grid(True, alpha=0.3)
     
-    # Subplot 3: Bank Lending Standards
-    ax3 = plt.subplot(3, 4, 3)
+    # Panel 3: Bank Lending Standards
+    ax3 = plt.subplot(12, 1, 3)
     if 'DRTSCILM' in data_dict:
         lending_std = data_dict['DRTSCILM'].dropna()
         ax3.plot(lending_std.index, lending_std.values, linewidth=1.5, color=colors['tight'])
@@ -484,8 +485,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax3.grid(True, alpha=0.3)
         ax3.legend()
     
-    # Subplot 4: Business Loan Growth
-    ax4 = plt.subplot(3, 4, 4)
+    # Panel 4: Business Loan Growth
+    ax4 = plt.subplot(12, 1, 4)
     if 'BUSLOANS_Growth' in data_dict:
         loan_growth = data_dict['BUSLOANS_Growth'].dropna()
         positive = loan_growth >= 0
@@ -499,8 +500,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax4.grid(True, alpha=0.3)
         ax4.legend()
     
-    # Subplot 5: Consumer Credit Growth
-    ax5 = plt.subplot(3, 4, 5)
+    # Panel 5: Consumer Credit Growth
+    ax5 = plt.subplot(12, 1, 5)
     if 'CONSUMER_Growth' in data_dict:
         consumer_growth = data_dict['CONSUMER_Growth'].dropna()
         ax5.plot(consumer_growth.index, consumer_growth.values, linewidth=1.5, color=colors['normal'])
@@ -513,8 +514,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax5.set_ylabel('YoY Growth (%)')
         ax5.grid(True, alpha=0.3)
     
-    # Subplot 6: Corporate Bond Yields
-    ax6 = plt.subplot(3, 4, 6)
+    # Panel 6: Corporate Bond Yields
+    ax6 = plt.subplot(12, 1, 6)
     if 'AAA' in data_dict and 'BAA' in data_dict:
         aaa_yield = data_dict['AAA'].dropna()
         baa_yield = data_dict['BAA'].dropna()
@@ -525,8 +526,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax6.grid(True, alpha=0.3)
         ax6.legend()
     
-    # Subplot 7: Composite Credit Conditions Index
-    ax7 = plt.subplot(3, 4, 7)
+    # Panel 7: Composite Credit Conditions Index
+    ax7 = plt.subplot(12, 1, 7)
     if not composite_index.empty:
         # Color code by conditions level
         composite_colors = []
@@ -572,8 +573,8 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
     ax8.grid(True, alpha=0.3)
     ax8.legend(loc='upper left', fontsize=8)
     
-    # Subplot 9: Normalized Credit Indicators
-    ax9 = plt.subplot(3, 4, 9)
+    # Panel 9: Normalized Credit Indicators
+    ax9 = plt.subplot(12, 1, 9)
     if not combined_df.empty:
         # Show key normalized indicators
         key_indicators = [col for col in combined_df.columns if any(key in col for key in 
@@ -594,7 +595,7 @@ def create_credit_conditions_visualization(data_dict: Dict[str, pd.Series], comp
         ax9.legend(loc='upper left', fontsize=7)
     
     # Subplot 10: Current Status Summary
-    ax10 = plt.subplot(3, 4, 10)
+    ax10 = plt.subplot(12, 1, 10)
     ax10.axis('off')
     
     # Get latest data for summary
@@ -646,8 +647,8 @@ KEY SPREADS:"""
         ax10.text(0.05, y_pos-0.05, interpretation, transform=ax10.transAxes, fontsize=9,
                  verticalalignment='top', style='italic')
     
-    # Subplot 11: Lending Standards Detail
-    ax11 = plt.subplot(3, 4, 11)
+    # Panel 11: Lending Standards Detail
+    ax11 = plt.subplot(12, 1, 11)
     lending_indicators = ['DRTSCILM', 'DRTSCIS', 'DRTSCLCC']
     for indicator in lending_indicators:
         if indicator in data_dict:
@@ -670,8 +671,8 @@ KEY SPREADS:"""
     ax11.grid(True, alpha=0.3)
     ax11.legend(loc='upper left', fontsize=8)
     
-    # Subplot 12: Loan Growth Comparison
-    ax12 = plt.subplot(3, 4, 12)
+    # Panel 12: Loan Growth Comparison
+    ax12 = plt.subplot(12, 1, 12)
     growth_indicators = ['BUSLOANS_Growth', 'CONSUMER_Growth', 'REALLN_Growth']
     for indicator in growth_indicators:
         if indicator in data_dict:
@@ -686,6 +687,14 @@ KEY SPREADS:"""
     ax12.set_ylabel('YoY Growth (%)')
     ax12.grid(True, alpha=0.3)
     ax12.legend(loc='upper left', fontsize=8)
+    
+    # Format x-axis for all time-series subplots using chart_utils for alignment
+    for ax in [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax11, ax12]:
+        if ax is not None:
+            try:
+                setup_aligned_time_axis(ax, major_interval_years=2)
+            except:
+                pass  # Skip axes that don't have time data
     
     plt.tight_layout()
     plt.savefig('credit_conditions_analysis.png', dpi=150, bbox_inches='tight')

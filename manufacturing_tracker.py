@@ -43,6 +43,7 @@ from datetime import datetime, timedelta
 import argparse
 import warnings
 import sys
+from chart_utils import setup_aligned_time_axis, add_chart_metadata, get_common_date_range, get_standard_figsize
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -244,8 +245,9 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
     plt.rcParams['font.size'] = 10
     
     # Create subplots
-    fig, axes = plt.subplots(3, 2, figsize=(16, 12))
-    fig.suptitle('🏭 Manufacturing Sector Health Analysis', fontsize=16, fontweight='bold', y=0.98)
+    # Create single-column visualization (6 panels stacked vertically)
+    fig, axes = plt.subplots(6, 1, figsize=get_standard_figsize(6))
+    fig.suptitle('🏭 Manufacturing Sector Health Analysis', fontsize=16, fontweight='bold', y=0.99)
     
     # Define colors
     colors = {
@@ -257,8 +259,8 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
         'Nondurable_Production': '#8c564b'
     }
     
-    # 1. Industrial Production (top left)
-    ax1 = axes[0, 0]
+    # Panel 1: Industrial Production
+    ax1 = axes[0]
     if 'Industrial_Production' in data:
         ip_data = data['Industrial_Production']
         ax1.plot(ip_data.index, ip_data, color=colors['Industrial_Production'], linewidth=2)
@@ -277,7 +279,7 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
                            alpha=0.2, color='red', label='Recession' if start == recession_periods[0][0] else "")
     
     # 2. Capacity Utilization (top right)
-    ax2 = axes[0, 1]
+    ax2 = axes[1]
     if 'Capacity_Utilization' in data:
         cu_data = data['Capacity_Utilization']
         ax2.plot(cu_data.index, cu_data, color=colors['Capacity_Utilization'], linewidth=2)
@@ -292,7 +294,7 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
         ax2.legend()
     
     # 3. New Orders - Total (middle left)
-    ax3 = axes[1, 0]
+    ax3 = axes[2]
     if 'New_Orders_Total' in data:
         no_data = data['New_Orders_Total']
         ax3.plot(no_data.index, no_data, color=colors['New_Orders_Total'], linewidth=2)
@@ -310,7 +312,7 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
             ax3.legend()
     
     # 4. New Orders - Durable Goods (middle right)
-    ax4 = axes[1, 1]
+    ax4 = axes[3]
     if 'New_Orders_Durable' in data:
         nod_data = data['New_Orders_Durable']
         ax4.plot(nod_data.index, nod_data, color=colors['New_Orders_Durable'], linewidth=2)
@@ -319,7 +321,7 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
         ax4.grid(True, alpha=0.3)
     
     # 5. Manufacturing Health Composite Score (bottom left)
-    ax5 = axes[2, 0]
+    ax5 = axes[4]
     if not composite_score.empty:
         ax5.plot(composite_score.index, composite_score, color='purple', linewidth=2.5, label='Health Score')
         ax5.set_title('Manufacturing Health Composite Score', fontweight='bold')
@@ -343,7 +345,7 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
                     arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
     
     # 6. Year-over-Year Growth Rates (bottom right)
-    ax6 = axes[2, 1]
+    ax6 = axes[5]
     growth_data = {}
     for name, series in data.items():
         if name in ['Industrial_Production', 'New_Orders_Total', 'New_Orders_Durable']:
@@ -362,12 +364,9 @@ def create_manufacturing_visualizations(data, composite_score, save_path=None):
         ax6.grid(True, alpha=0.3)
         ax6.legend()
     
-    # Format x-axes for all subplots
+    # Format x-axes for all subplots using chart_utils for alignment
     for ax in axes.flat:
-        ax.tick_params(axis='x', rotation=45)
-        ax.xaxis.set_major_locator(mdates.YearLocator())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax.xaxis.set_minor_locator(mdates.MonthLocator((1, 7)))
+        setup_aligned_time_axis(ax, major_interval_years=2)
     
     plt.tight_layout()
     
