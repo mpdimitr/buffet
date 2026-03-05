@@ -21,6 +21,11 @@ NBER_RECESSIONS = [
     ("2020-02-01", "2020-04-01"),
 ]
 
+STATUS_ELEVATED = "Elevated Risk"
+STATUS_WATCH = "Watch Zone"
+STATUS_NORMAL = "Normal"
+STATUS_FAVORABLE = "Favorable"
+
 
 def parse_common_args(description: str, default_start: str = "1990-01-01", default_window: int = 12, default_min_data_points: int = 24) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=description)
@@ -30,6 +35,52 @@ def parse_common_args(description: str, default_start: str = "1990-01-01", defau
     parser.add_argument("--min-data-points", type=int, default=default_min_data_points, help="Minimum required observations")
     parser.add_argument("--describe", action="store_true", help="Print a one-paragraph explanation of the tracked metric and exit")
     return parser.parse_args()
+
+
+def classify_current_status(series: pd.Series, risk_direction: str = "higher_is_risk") -> str:
+    values = series.dropna()
+    if values.empty:
+        return STATUS_NORMAL
+
+    latest = float(values.iloc[-1])
+
+    if risk_direction == "higher_is_risk":
+        q25 = float(values.quantile(0.25))
+        q75 = float(values.quantile(0.75))
+        q90 = float(values.quantile(0.90))
+        if latest <= q25:
+            return STATUS_FAVORABLE
+        if latest <= q75:
+            return STATUS_NORMAL
+        if latest <= q90:
+            return STATUS_WATCH
+        return STATUS_ELEVATED
+
+    if risk_direction == "lower_is_risk":
+        q10 = float(values.quantile(0.10))
+        q25 = float(values.quantile(0.25))
+        q75 = float(values.quantile(0.75))
+        if latest <= q10:
+            return STATUS_ELEVATED
+        if latest <= q25:
+            return STATUS_WATCH
+        if latest <= q75:
+            return STATUS_NORMAL
+        return STATUS_FAVORABLE
+
+    median = float(values.median())
+    abs_dev = (values - median).abs()
+    d50 = float(abs_dev.quantile(0.50))
+    d75 = float(abs_dev.quantile(0.75))
+    d90 = float(abs_dev.quantile(0.90))
+    latest_dev = abs(latest - median)
+    if latest_dev <= d50:
+        return STATUS_FAVORABLE
+    if latest_dev <= d75:
+        return STATUS_NORMAL
+    if latest_dev <= d90:
+        return STATUS_WATCH
+    return STATUS_ELEVATED
 
 
 def parse_start_date(start: str, fallback: str = "1990-01-01") -> pd.Timestamp:
@@ -111,7 +162,7 @@ def save_single_indicator_outputs(
     end_date: Optional[str] = None,
     major_interval_years: int = 2,
     risk_direction: str = "higher_is_risk",
-) -> None:
+) -> str:
     series = series.dropna().sort_index()
     smoothed = rolling_mean(series, window)
 
@@ -182,6 +233,10 @@ def save_single_indicator_outputs(
 
     out = pd.DataFrame({metric_name: series, f"{metric_name}_rolling_mean": smoothed})
     out.to_csv(output_csv, index_label="date")
+
+    status = classify_current_status(series, risk_direction=risk_direction)
+    print(f"Current status: {status}")
+    return status
 
 
 def log_tracker_header(name: str, start: str, window: int, min_data_points: int) -> None:

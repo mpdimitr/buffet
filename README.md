@@ -13,14 +13,25 @@ The `streamline` branch simplifies each indicator script to one chart and one pr
 
 ### Single signal per tracker
 - `buffet_tracker.py`: `Buffett_pct_of_GDP`
+- `inflation_spread_tracker.py`: `CPI_minus_CorePCE_YoY`
+- `real_policy_rate_tracker.py`: `Real_Policy_Rate`
+- `inflation_expectations_tracker.py`: `Inflation_Expectations_5Y5Y`
+- `real_m2_growth_tracker.py`: `Real_M2_Growth`
 - `yield_curve_tracker.py`: `Yield_Spread_10Y_3M`
 - `shiller_cape_tracker.py`: `CAPE`
 - `labor_market_tracker.py`: `Unemployment_Rate`
+- `payroll_momentum_tracker.py`: `Payrolls_YoY`
+- `initial_claims_tracker.py`: `Initial_Claims_4WkAvg`
 - `credit_conditions_tracker.py`: `BAA_Treasury_Spread`
+- `high_yield_oas_tracker.py`: `High_Yield_OAS`
+- `bank_credit_growth_tracker.py`: `Bank_Credit_Growth_YoY`
 - `manufacturing_tracker.py`: `Manufacturing_Output_YoY`
 - `consumer_health_tracker.py`: `Retail_Sales_YoY`
+- `household_balance_tracker.py`: `Household_Buffer`
 - `corporate_earnings_tracker.py`: `Corporate_Profits_YoY`
 - `international_trade_tracker.py`: `Trade_Balance`
+- `housing_affordability_tracker.py`: `Housing_Affordability_Pressure`
+- `housing_starts_tracker.py`: `Housing_Starts_YoY`
 - `shipping_tracker_complete.py`: `Freight_Activity_YoY`
 
 This design keeps indicator scripts thin and focused while maximizing re-use through shared modules.
