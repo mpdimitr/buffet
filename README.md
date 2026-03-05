@@ -1,5 +1,30 @@
 # Buffett Indicator Analysis
 
+## Streamlined Branch (single-signal architecture)
+
+The `streamline` branch simplifies each indicator script to one chart and one primary metric.
+
+### Reusable core module
+- `streamline_core.py` centralizes shared capabilities:
+	- external data download (`FRED`, `yfinance`)
+	- common transforms (period-end resampling, YoY growth, rolling mean)
+	- standardized plotting (single-chart format + recession shading)
+	- consistent CSV export
+
+### Single signal per tracker
+- `buffet_tracker.py`: `Buffett_pct_of_GDP`
+- `yield_curve_tracker.py`: `Yield_Spread_10Y_3M`
+- `shiller_cape_tracker.py`: `CAPE`
+- `labor_market_tracker.py`: `Unemployment_Rate`
+- `credit_conditions_tracker.py`: `BAA_Treasury_Spread`
+- `manufacturing_tracker.py`: `Manufacturing_Output_YoY`
+- `consumer_health_tracker.py`: `Retail_Sales_YoY`
+- `corporate_earnings_tracker.py`: `Corporate_Profits_YoY`
+- `international_trade_tracker.py`: `Trade_Balance`
+- `shipping_tracker_complete.py`: `Freight_Activity_YoY`
+
+This design keeps indicator scripts thin and focused while maximizing re-use through shared modules.
+
 This project computes and visualizes the **Buffett Indicator** (Total US Equity Market Capitalization / Nominal GDP) and derives several *contextual valuation metrics* to help interpret secular drift and cyclical deviations.
 
 The enhanced output file(s):
