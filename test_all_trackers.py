@@ -47,6 +47,13 @@ STATUS_COLORS = {
     "Favorable": "#B8E6C1",
 }
 
+STATUS_PRIORITY = {
+    "Elevated Risk": 0,
+    "Watch Zone": 1,
+    "Normal": 2,
+    "Favorable": 3,
+}
+
 
 def default_start_20y() -> str:
     today = date.today()
@@ -197,6 +204,16 @@ def build_pdf(rows: list[dict[str, str]], output_pdf: str, start: str, end: str)
             plt.close(fig)
 
 
+def sort_rows_by_severity(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return sorted(
+        rows,
+        key=lambda row: (
+            STATUS_PRIORITY.get(row["status"], 99),
+            row["display_name"],
+        ),
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run trackers on one interval and build aligned comparison PDF")
     parser.add_argument("--start", type=str, default=default_start_20y(), help="Start date YYYY-MM-DD")
@@ -215,6 +232,9 @@ def main() -> None:
 
     rows: list[dict[str, str]] = []
     for tracker in present:
+        if os.path.exists(tracker["chart"]):
+            os.remove(tracker["chart"])
+
         try:
             stdout_text = run_tracker(tracker["script"], args.start, args.end, tracker["min_points"])
             if not os.path.exists(tracker["chart"]):
@@ -238,6 +258,7 @@ def main() -> None:
     if not rows:
         raise RuntimeError("No trackers succeeded for the selected interval.")
 
+    rows = sort_rows_by_severity(rows)
     build_pdf(rows, args.output, args.start, args.end)
     print(f"Saved: {args.output}")
 
