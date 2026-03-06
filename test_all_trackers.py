@@ -202,6 +202,11 @@ def main() -> None:
     parser.add_argument("--start", type=str, default=default_start_20y(), help="Start date YYYY-MM-DD")
     parser.add_argument("--end", type=str, default=date.today().strftime("%Y-%m-%d"), help="End date YYYY-MM-DD")
     parser.add_argument("--output", type=str, default="tracker_comparison_aligned.pdf", help="Output PDF filename")
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="Skip trackers that cannot run for the selected window and build dashboard from available data",
+    )
     args = parser.parse_args()
 
     present = [tracker for tracker in TRACKERS if os.path.exists(tracker["script"])]
@@ -210,11 +215,18 @@ def main() -> None:
 
     rows: list[dict[str, str]] = []
     for tracker in present:
-        stdout_text = run_tracker(tracker["script"], args.start, args.end, tracker["min_points"])
-        if not os.path.exists(tracker["chart"]):
-            raise RuntimeError(f"Expected chart not found after run: {tracker['chart']}")
-        description = get_tracker_description(tracker["script"])
-        status = extract_tracker_status(stdout_text, tracker["script"])
+        try:
+            stdout_text = run_tracker(tracker["script"], args.start, args.end, tracker["min_points"])
+            if not os.path.exists(tracker["chart"]):
+                raise RuntimeError(f"Expected chart not found after run: {tracker['chart']}")
+            description = get_tracker_description(tracker["script"])
+            status = extract_tracker_status(stdout_text, tracker["script"])
+        except Exception as exc:
+            if args.allow_partial:
+                print(f"Skipping {tracker['script']}: {exc}")
+                continue
+            raise
+
         rows.append({
             "script": tracker["script"],
             "display_name": pretty_tracker_name(tracker["script"]),
@@ -222,6 +234,9 @@ def main() -> None:
             "description": description,
             "status": status,
         })
+
+    if not rows:
+        raise RuntimeError("No trackers succeeded for the selected interval.")
 
     build_pdf(rows, args.output, args.start, args.end)
     print(f"Saved: {args.output}")
