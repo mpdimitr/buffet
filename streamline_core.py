@@ -163,18 +163,29 @@ def save_single_indicator_outputs(
     major_interval_years: int = 2,
     risk_direction: str = "higher_is_risk",
 ) -> str:
-    series = series.dropna().sort_index()
-    smoothed = rolling_mean(series, window)
-
     if start_date is not None:
         x_start = pd.to_datetime(start_date)
     else:
-        x_start = series.index.min()
+        x_start = None
 
     if end_date is not None:
         x_end = pd.to_datetime(end_date)
     else:
         x_end = pd.to_datetime(dt.datetime.today())
+
+    series = series.dropna().sort_index()
+    if x_start is not None:
+        series = series[series.index >= x_start]
+    if x_end is not None:
+        series = series[series.index <= x_end]
+
+    if series.empty:
+        raise ValueError("No data points remain after applying date window")
+
+    if x_start is None:
+        x_start = series.index.min()
+
+    smoothed = rolling_mean(series, window)
 
     hist_q10 = series.quantile(0.10)
     hist_q25 = series.quantile(0.25)

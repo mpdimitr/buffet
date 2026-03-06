@@ -17,27 +17,15 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 
 TRACKERS = [
-    {"script": "buffet_tracker.py", "chart": "buffett_indicator_enhanced.png", "min_points": 8},
-    {"script": "inflation_spread_tracker.py", "chart": "inflation_spread_analysis.png", "min_points": 24},
-    {"script": "real_policy_rate_tracker.py", "chart": "real_policy_rate_analysis.png", "min_points": 24},
-    {"script": "inflation_expectations_tracker.py", "chart": "inflation_expectations_analysis.png", "min_points": 24},
-    {"script": "real_m2_growth_tracker.py", "chart": "real_m2_growth_analysis.png", "min_points": 24},
-    {"script": "yield_curve_tracker.py", "chart": "yield_curve_analysis.png", "min_points": 24},
-    {"script": "shiller_cape_tracker.py", "chart": "shiller_cape_analysis.png", "min_points": 24},
-    {"script": "labor_market_tracker.py", "chart": "labor_market_analysis.png", "min_points": 24},
-    {"script": "payroll_momentum_tracker.py", "chart": "payroll_momentum_analysis.png", "min_points": 24},
-    {"script": "initial_claims_tracker.py", "chart": "initial_claims_analysis.png", "min_points": 24},
-    {"script": "credit_conditions_tracker.py", "chart": "credit_conditions_analysis.png", "min_points": 24},
-    {"script": "high_yield_oas_tracker.py", "chart": "high_yield_oas_analysis.png", "min_points": 24},
-    {"script": "bank_credit_growth_tracker.py", "chart": "bank_credit_growth_analysis.png", "min_points": 24},
-    {"script": "consumer_health_tracker.py", "chart": "consumer_health_analysis.png", "min_points": 24},
-    {"script": "household_balance_tracker.py", "chart": "household_balance_analysis.png", "min_points": 12},
-    {"script": "corporate_earnings_tracker.py", "chart": "corporate_earnings_analysis.png", "min_points": 8},
-    {"script": "international_trade_tracker.py", "chart": "international_trade_analysis.png", "min_points": 24},
-    {"script": "housing_affordability_tracker.py", "chart": "housing_affordability_analysis.png", "min_points": 24},
-    {"script": "housing_starts_tracker.py", "chart": "housing_starts_analysis.png", "min_points": 24},
-    {"script": "manufacturing_tracker.py", "chart": "manufacturing_analysis.png", "min_points": 24},
-    {"script": "shipping_tracker_complete.py", "chart": "primary_shipping_tracker.png", "min_points": 24},
+    {"script": "buffet_tracker.py", "chart": "buffett_indicator_enhanced.png", "min_points": 8, "signal_group": "BOTH"},
+    {"script": "yield_curve_tracker.py", "chart": "yield_curve_analysis.png", "min_points": 24, "signal_group": "BOTH"},
+    {"script": "housing_starts_tracker.py", "chart": "housing_starts_analysis.png", "min_points": 24, "signal_group": "PEAK"},
+    {"script": "international_trade_tracker.py", "chart": "international_trade_analysis.png", "min_points": 24, "signal_group": "PEAK"},
+    {"script": "shiller_cape_tracker.py", "chart": "shiller_cape_analysis.png", "min_points": 24, "signal_group": "BOTTOM"},
+    {"script": "housing_affordability_tracker.py", "chart": "housing_affordability_analysis.png", "min_points": 24, "signal_group": "BOTTOM"},
+    {"script": "real_m2_growth_tracker.py", "chart": "real_m2_growth_analysis.png", "min_points": 24, "signal_group": "BOTTOM"},
+    {"script": "inflation_spread_tracker.py", "chart": "inflation_spread_analysis.png", "min_points": 24, "signal_group": "BOTTOM"},
+    {"script": "labor_market_tracker.py", "chart": "labor_market_analysis.png", "min_points": 24, "signal_group": "BOTTOM"},
 ]
 
 STATUS_COLORS = {
@@ -52,6 +40,12 @@ STATUS_PRIORITY = {
     "Watch Zone": 1,
     "Normal": 2,
     "Favorable": 3,
+}
+
+SIGNAL_GROUP_ORDER = {
+    "BOTH": 0,
+    "PEAK": 1,
+    "BOTTOM": 2,
 }
 
 
@@ -107,7 +101,12 @@ def pretty_tracker_name(script_name: str) -> str:
     return " ".join(words)
 
 
-def add_summary_page(pdf: PdfPages, rows: list[dict[str, str]], start: str, end: str) -> None:
+def add_summary_page(
+    pdf: PdfPages,
+    rows: list[dict[str, str]],
+    start: str,
+    end: str,
+) -> None:
     fig = plt.figure(figsize=(11, 8.5))
     ax = fig.add_subplot(111)
     ax.axis("off")
@@ -163,6 +162,7 @@ def add_summary_page(pdf: PdfPages, rows: list[dict[str, str]], start: str, end:
 
         wrapped_name = textwrap.fill(row["display_name"], width=16)
         ax.text(x + 0.008, y + card_h - 0.012, wrapped_name, transform=ax.transAxes, ha="left", va="top", fontsize=name_fs, fontweight="bold")
+        ax.text(x + 0.008, y + 0.029, row["signal_group"], transform=ax.transAxes, ha="left", va="bottom", fontsize=7)
         ax.text(x + 0.008, y + 0.009, row["status"], transform=ax.transAxes, ha="left", va="bottom", fontsize=status_fs)
 
     legend_y = 0.03
@@ -176,7 +176,12 @@ def add_summary_page(pdf: PdfPages, rows: list[dict[str, str]], start: str, end:
     plt.close(fig)
 
 
-def build_pdf(rows: list[dict[str, str]], output_pdf: str, start: str, end: str) -> None:
+def build_pdf(
+    rows: list[dict[str, str]],
+    output_pdf: str,
+    start: str,
+    end: str,
+) -> None:
     with PdfPages(output_pdf) as pdf:
         add_summary_page(pdf, rows, start, end)
         for row in rows:
@@ -187,7 +192,7 @@ def build_pdf(rows: list[dict[str, str]], output_pdf: str, start: str, end: str)
             image = plt.imread(row["chart"])
             ax_img.imshow(image)
             ax_img.axis("off")
-            ax_img.set_title(row["script"], loc="left", fontsize=10, fontweight="bold")
+            ax_img.set_title(f"{row['script']} [{row['signal_group']}]", loc="left", fontsize=10, fontweight="bold")
 
             ax_txt = fig.add_subplot(gs[1, 0])
             ax_txt.axis("off")
@@ -204,10 +209,11 @@ def build_pdf(rows: list[dict[str, str]], output_pdf: str, start: str, end: str)
             plt.close(fig)
 
 
-def sort_rows_by_severity(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+def sort_rows_by_group_and_severity(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return sorted(
         rows,
         key=lambda row: (
+            SIGNAL_GROUP_ORDER.get(row["signal_group"], 99),
             STATUS_PRIORITY.get(row["status"], 99),
             row["display_name"],
         ),
@@ -231,6 +237,7 @@ def main() -> None:
         raise RuntimeError("No tracker scripts found.")
 
     rows: list[dict[str, str]] = []
+
     for tracker in present:
         if os.path.exists(tracker["chart"]):
             os.remove(tracker["chart"])
@@ -249,16 +256,18 @@ def main() -> None:
 
         rows.append({
             "script": tracker["script"],
-            "display_name": pretty_tracker_name(tracker["script"]),
+            "name": pretty_tracker_name(tracker["script"]),
+            "display_name": f"{pretty_tracker_name(tracker['script'])} [{tracker['signal_group']}]",
             "chart": tracker["chart"],
             "description": description,
             "status": status,
+            "signal_group": tracker["signal_group"],
         })
 
     if not rows:
         raise RuntimeError("No trackers succeeded for the selected interval.")
 
-    rows = sort_rows_by_severity(rows)
+    rows = sort_rows_by_group_and_severity(rows)
     build_pdf(rows, args.output, args.start, args.end)
     print(f"Saved: {args.output}")
 

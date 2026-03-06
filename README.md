@@ -1,40 +1,43 @@
 # Buffett Indicator Analysis
 
-## Streamlined Branch (single-signal architecture)
+## Current Dashboard Scope (High-Signal Set)
 
-The `streamline` branch simplifies each indicator script to one chart and one primary metric.
+The dashboard pipeline was simplified to keep only indicators that historically showed stronger peak/bottom signaling behavior in this repo's event backtests.
 
-### Reusable core module
-- `streamline_core.py` centralizes shared capabilities:
-	- external data download (`FRED`, `yfinance`)
-	- common transforms (period-end resampling, YoY growth, rolling mean)
-	- standardized plotting (single-chart format + recession shading)
-	- consistent CSV export
+### Active trackers in `test_all_trackers.py`
+- `buffet_tracker.py` (`BOTH`)
+- `yield_curve_tracker.py` (`BOTH`)
+- `housing_starts_tracker.py` (`PEAK`)
+- `international_trade_tracker.py` (`PEAK`)
+- `shiller_cape_tracker.py` (`BOTTOM`)
+- `housing_affordability_tracker.py` (`BOTTOM`)
+- `real_m2_growth_tracker.py` (`BOTTOM`)
+- `inflation_spread_tracker.py` (`BOTTOM`)
+- `labor_market_tracker.py` (`BOTTOM`)
 
-### Single signal per tracker
-- `buffet_tracker.py`: `Buffett_pct_of_GDP`
-- `inflation_spread_tracker.py`: `CPI_minus_CorePCE_YoY`
-- `real_policy_rate_tracker.py`: `Real_Policy_Rate`
-- `inflation_expectations_tracker.py`: `Inflation_Expectations_5Y5Y`
-- `real_m2_growth_tracker.py`: `Real_M2_Growth`
-- `yield_curve_tracker.py`: `Yield_Spread_10Y_3M`
-- `shiller_cape_tracker.py`: `CAPE`
-- `labor_market_tracker.py`: `Unemployment_Rate`
-- `payroll_momentum_tracker.py`: `Payrolls_YoY`
-- `initial_claims_tracker.py`: `Initial_Claims_4WkAvg`
-- `credit_conditions_tracker.py`: `BAA_Treasury_Spread`
-- `high_yield_oas_tracker.py`: `High_Yield_OAS`
-- `bank_credit_growth_tracker.py`: `Bank_Credit_Growth_YoY`
-- `manufacturing_tracker.py`: `Manufacturing_Output_YoY`
-- `consumer_health_tracker.py`: `Retail_Sales_YoY`
-- `household_balance_tracker.py`: `Household_Buffer`
-- `corporate_earnings_tracker.py`: `Corporate_Profits_YoY`
-- `international_trade_tracker.py`: `Trade_Balance`
-- `housing_affordability_tracker.py`: `Housing_Affordability_Pressure`
-- `housing_starts_tracker.py`: `Housing_Starts_YoY`
-- `shipping_tracker_complete.py`: `Freight_Activity_YoY`
+The summary page now shows grouped status cards only (no aggregate scorecard and no drift chart).
 
-This design keeps indicator scripts thin and focused while maximizing re-use through shared modules.
+### Regenerating dashboards
+```bash
+# Rebuild today's 20-year dashboard
+/home/mpdimitr/coding/buffet/.venv/bin/python test_all_trackers.py \
+  --start 2006-03-06 \
+  --end 2026-03-06 \
+  --output today_20y_dashboard_2026-03-06.pdf
+
+# Rebuild the historical event dashboard set
+/home/mpdimitr/coding/buffet/.venv/bin/python build_historical_dashboard_reports.py
+```
+
+### Historical report outputs
+- `historical_dashboards/dashboard_1990-07-16_pre_gulf_war_peak.pdf`
+- `historical_dashboards/dashboard_1991-03-01_recession_bottom_1991.pdf`
+- `historical_dashboards/dashboard_2000-03-24_pre_dotcom_peak.pdf`
+- `historical_dashboards/dashboard_2001-11-01_recession_bottom_2001.pdf`
+- `historical_dashboards/dashboard_2007-10-09_pre_gfc_peak.pdf`
+- `historical_dashboards/dashboard_2009-06-01_recession_bottom_2009.pdf`
+- `historical_dashboards/dashboard_2020-02-19_pre_covid_peak.pdf`
+- `historical_dashboards/dashboard_2020-04-01_recession_bottom_2020.pdf`
 
 This project computes and visualizes the **Buffett Indicator** (Total US Equity Market Capitalization / Nominal GDP) and derives several *contextual valuation metrics* to help interpret secular drift and cyclical deviations.
 
