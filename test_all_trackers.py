@@ -17,6 +17,14 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 
 TRACKERS = [
+    {
+        "script": "market_indices_tracker.py",
+        "chart": "market_indices_sp500_nasdaq.png",
+        "min_points": 36,
+        "signal_group": "BOTH",
+        "priority": 0,
+        "summary_card": False,
+    },
     {"script": "buffet_tracker.py", "chart": "buffett_indicator_enhanced.png", "min_points": 8, "signal_group": "BOTH"},
     {"script": "yield_curve_tracker.py", "chart": "yield_curve_analysis.png", "min_points": 24, "signal_group": "BOTH"},
     {"script": "housing_starts_tracker.py", "chart": "housing_starts_analysis.png", "min_points": 24, "signal_group": "PEAK"},
@@ -183,7 +191,8 @@ def build_pdf(
     end: str,
 ) -> None:
     with PdfPages(output_pdf) as pdf:
-        add_summary_page(pdf, rows, start, end)
+        summary_rows = [row for row in rows if row.get("summary_card", True)]
+        add_summary_page(pdf, summary_rows, start, end)
         for row in rows:
             fig = plt.figure(figsize=(11, 8.5))
             gs = fig.add_gridspec(2, 1, height_ratios=[6.0, 1.4], hspace=0.08)
@@ -213,6 +222,7 @@ def sort_rows_by_group_and_severity(rows: list[dict[str, str]]) -> list[dict[str
     return sorted(
         rows,
         key=lambda row: (
+            row.get("priority", 99),
             SIGNAL_GROUP_ORDER.get(row["signal_group"], 99),
             STATUS_PRIORITY.get(row["status"], 99),
             row["display_name"],
@@ -262,6 +272,8 @@ def main() -> None:
             "description": description,
             "status": status,
             "signal_group": tracker["signal_group"],
+            "priority": tracker.get("priority", 99),
+            "summary_card": tracker.get("summary_card", True),
         })
 
     if not rows:

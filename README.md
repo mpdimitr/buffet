@@ -5,6 +5,7 @@
 The dashboard pipeline was simplified to keep only indicators that historically showed stronger peak/bottom signaling behavior in this repo's event backtests.
 
 ### Active trackers in `test_all_trackers.py`
+- `market_indices_tracker.py` (`BOTH`) - S&P 500 vs Nasdaq (dual-axis) with recession bands
 - `buffet_tracker.py` (`BOTH`)
 - `yield_curve_tracker.py` (`BOTH`)
 - `housing_starts_tracker.py` (`PEAK`)
